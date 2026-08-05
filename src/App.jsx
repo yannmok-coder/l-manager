@@ -88,7 +88,7 @@ const OPPONENTS = [
 ];
 
 const DRAGON_TYPES = ['화염', '바다', '대지', '바람', '마법'];
-const APP_VERSION = 'v.0.018';
+const APP_VERSION = 'v.0.019';
 const SINGLE_PULL_COST = 500;
 const MULTI_PULL_COUNT = 5;
 const MULTI_PULL_COST = 2250;
@@ -2952,25 +2952,56 @@ export default function App() {
 
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className={`${panel} p-3`}>
-            <div className="text-xs mb-1 lm-muted">우리 팀 밴 / 픽</div>
-            <div className="flex flex-wrap gap-1 mb-1">
-              {draft.userBans.map((c, i) => <span key={i} className="text-xs px-1.5 py-0.5 rounded lm-ban-tag">{c}</span>)}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {draft.userPicks.map((c, i) => <span key={i} className="text-xs px-1.5 py-0.5 rounded lm-pick-tag-user">{c}</span>)}
+            <div className="text-xs mb-2 lm-muted">우리 팀</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-xs mb-1 lm-dim">밴</div>
+                <div className="space-y-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className={`text-xs px-1.5 py-1 rounded text-center ${draft.userBans[i] ? 'lm-ban-tag' : 'lm-track'}`} style={!draft.userBans[i] ? { opacity: 0.4 } : {}}>
+                      {draft.userBans[i] || '-'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs mb-1 lm-dim">픽</div>
+                <div className="space-y-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className={`text-xs px-1.5 py-1 rounded text-center ${draft.userPicks[i] ? 'lm-pick-tag-user' : 'lm-track'}`} style={!draft.userPicks[i] ? { opacity: 0.4 } : {}}>
+                      {draft.userPicks[i] || '-'}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
           <div className={`${panel} p-3`}>
-            <div className="text-xs mb-1 lm-muted">상대 팀 밴 / 픽</div>
-            <div className="flex flex-wrap gap-1 mb-1">
-              {draft.aiBans.map((c, i) => <span key={i} className="text-xs px-1.5 py-0.5 rounded lm-ban-tag">{c}</span>)}
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {draft.aiPicks.map((c, i) => (
-                <span key={i} className="text-xs px-1.5 py-0.5 rounded lm-pick-tag-ai">
-                  {draft.phase === 'done' ? `${POS_LABEL[POSITIONS[i]]} · ${c}` : c}
-                </span>
-              ))}
+            <div className="text-xs mb-2 lm-muted">상대 팀</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-xs mb-1 lm-dim">밴</div>
+                <div className="space-y-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className={`text-xs px-1.5 py-1 rounded text-center ${draft.aiBans[i] ? 'lm-ban-tag' : 'lm-track'}`} style={!draft.aiBans[i] ? { opacity: 0.4 } : {}}>
+                      {draft.aiBans[i] || '-'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs mb-1 lm-dim">픽</div>
+                <div className="space-y-1">
+                  {(() => {
+                    const aiAssignmentPreview = draft.phase === 'done' ? assignPicksToPositions(draft.aiPicks) : null;
+                    return Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className={`text-xs px-1.5 py-1 rounded text-center ${draft.aiPicks[i] ? 'lm-pick-tag-ai' : 'lm-track'}`} style={!draft.aiPicks[i] ? { opacity: 0.4 } : {}}>
+                        {draft.aiPicks[i] ? (aiAssignmentPreview ? `${POS_LABEL[POSITIONS.find((pos) => aiAssignmentPreview[pos] === draft.aiPicks[i])]} · ${draft.aiPicks[i]}` : draft.aiPicks[i]) : '-'}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         </div>
