@@ -108,6 +108,10 @@ Object.keys(REGION_CLUBS).forEach((region) => {
     return { ...c, power };
   });
 });
+// 모든 구단에 2군 파워 부여 (1군보다 확연히 약하게, 60~78% 수준)
+Object.keys(REGION_CLUBS).forEach((region) => {
+  REGION_CLUBS[region] = REGION_CLUBS[region].map((c) => ({ ...c, power2: Math.round(c.power * (0.6 + Math.random() * 0.18)) }));
+});
 // 밴1(3:3, user 선공) → 픽1(3:3, 스네이크) → 밴2(2:2, ai 선공) → 픽2(2:2, 스네이크 이어서) = 실제 프로 경기 순서
 const DRAFT_ORDER_BAN1 = ['user', 'ai', 'user', 'ai', 'user', 'ai'];
 const DRAFT_ORDER_PICK1 = ['user', 'ai', 'ai', 'user', 'user', 'ai'];
@@ -146,28 +150,49 @@ function generateName(usedSet) {
   return name;
 }
 
-function generatePlayer(position, tier, usedSet, idRef) {
-  const base = tier === '1군' ? randRange(60, 85) : randRange(45, 70);
-  const stat = () => clamp(base + randRange(-10, 10), 30, 95);
+// 선수 등급별 능력치 기초 범위 (등급이 높을수록 드물게 등장 = 상향평준화 방지)
+const PLAYER_GRADE_TABLE = [
+  { grade: 'COMMON', weight: 70, baseMin: 28, baseMax: 52 },
+  { grade: 'RARE', weight: 22, baseMin: 48, baseMax: 68 },
+  { grade: 'EPIC', weight: 8, baseMin: 64, baseMax: 88 },
+];
+function rollPlayerGrade() {
+  const total = PLAYER_GRADE_TABLE.reduce((s, g) => s + g.weight, 0);
+  let roll = Math.random() * total;
+  for (const g of PLAYER_GRADE_TABLE) {
+    if (roll < g.weight) return g;
+    roll -= g.weight;
+  }
+  return PLAYER_GRADE_TABLE[0];
+}
+
+// tier(1군/2군)는 더 이상 능력치를 결정하지 않는다 - 구단이 로스터에서 자유롭게 지정하는 "보직"일 뿐이다.
+// 능력치는 등급(COMMON/RARE/EPIC) 확률에 따라 결정된다.
+function generatePlayer(position, usedSet, idRef, opts = {}) {
+  const gradeInfo = opts.gradeInfo || rollPlayerGrade();
+  const base = randRange(gradeInfo.baseMin, gradeInfo.baseMax);
+  const stat = () => clamp(base + randRange(-9, 9), 15, 99);
   const mechanics = stat(), gameSense = stat(), teamfight = stat(), laning = stat();
   const overall = Math.round((mechanics + gameSense + teamfight + laning) / 4);
-  const potBonus = tier === '1군' ? randRange(0, 12) : randRange(14, 32);
+  const potBonus = randRange(8, 26);
   const potential = clamp(overall + potBonus, overall, 99);
   const value = Math.round(overall * 12 + potential * 4);
   return {
     id: idRef.current++,
     name: generateName(usedSet),
-    position, tier,
+    position, tier: opts.tier || '2군',
     region: REGIONS[randRange(0, REGIONS.length - 1)],
     mechanics, gameSense, teamfight, laning,
     overall, potential, level: 1, exp: 0, value,
+    grade: gradeInfo.grade,
   };
 }
 
 function generateInitialGame(name, region, usedSetRef, idRef) {
   const players = [];
   POSITIONS.forEach((pos) => {
-    players.push(generatePlayer(pos, '1군', usedSetRef.current, idRef));
+    // 창단 시작 선수는 항상 커먼 등급으로 고정 - 낮은 구단파워로 시작해서 성장/영입으로 강해지는 구조
+    players.push(generatePlayer(pos, usedSetRef.current, idRef, { tier: '1군', gradeInfo: PLAYER_GRADE_TABLE[0] }));
   });
   const clubValue = players.reduce((s, p) => s + p.value, 0);
   const club = { name, region, value: clubValue, budget: 5000, wins: 0, losses: 0 };
@@ -210,8 +235,7 @@ function ensureSpecialListings(list, players, usedSetRef, idRef) {
 
 function generateNpcListing(usedSetRef, idRef, forcedPosition) {
   const position = forcedPosition || POSITIONS[randRange(0, POSITIONS.length - 1)];
-  const tier = Math.random() < 0.6 ? '2군' : '1군';
-  const player = generatePlayer(position, tier, usedSetRef.current, idRef);
+  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '2군' });
   const price = Math.round(player.value * (randRange(80, 130) / 100));
   const fromClub = OPPONENTS[randRange(0, OPPONENTS.length - 1)].name;
   return { ...player, price, fromClub, source: 'npc' };
@@ -226,22 +250,8 @@ function generateFullNpcMarket(usedSetRef, idRef) {
 }
 
 function gachaPull(usedSetRef, idRef, forcedPosition) {
-  const roll = Math.random();
   const position = forcedPosition || POSITIONS[randRange(0, POSITIONS.length - 1)];
-  let grade, tier;
-  if (roll < 0.08) { grade = 'EPIC'; tier = '1군'; }
-  else if (roll < 0.3) { grade = 'RARE'; tier = '1군'; }
-  else { grade = 'COMMON'; tier = '2군'; }
-  const player = generatePlayer(position, tier, usedSetRef.current, idRef);
-  if (grade === 'EPIC') {
-    ['mechanics', 'gameSense', 'teamfight', 'laning'].forEach((k) => {
-      player[k] = clamp(player[k] + randRange(8, 15), 0, 99);
-    });
-    player.overall = Math.round((player.mechanics + player.gameSense + player.teamfight + player.laning) / 4);
-    player.potential = clamp(Math.max(player.potential, player.overall + randRange(0, 10)), player.overall, 99);
-    player.value = Math.round(player.overall * 12 + player.potential * 4);
-  }
-  player.grade = grade;
+  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '2군' });
   return player;
 }
 
@@ -358,6 +368,15 @@ const CHAMPION_WEAPON = {
   '렐': '🔨', '자이라': '🌿', '모르가나': '⛓️', '바드': '🪄', '스웨인': '🐦',
 };
 
+function computeTeamPower(players) {
+  return POSITIONS.reduce((sum, pos) => {
+    const candidates = players.filter((p) => p.position === pos);
+    if (candidates.length === 0) return sum;
+    const starter = candidates.find((p) => p.tier === '1군') || [...candidates].sort((a, b) => b.overall - a.overall)[0];
+    return sum + starter.overall;
+  }, 0);
+}
+
 function powerTierLabel(power) {
   if (power < 300) return '약체';
   if (power < 340) return '평범';
@@ -366,17 +385,23 @@ function powerTierLabel(power) {
   return '최강';
 }
 
-function generateOpponentLineup(power) {
+function generateOpponentLineup(power, tierLabel) {
   const used = new Set();
-  const idRef = { current: 9000 };
+  const idRef = { current: randRange(9000, 98000) };
   const per = power / 5;
-  return POSITIONS.map((pos) => ({
-    id: idRef.current++,
-    name: generateName(used),
-    position: pos,
-    overall: clamp(Math.round(per + randRange(-6, 6)), 30, 99),
-    champion: null, kills: 0, deaths: 0, assists: 0,
-  }));
+  return POSITIONS.map((pos) => {
+    const target = clamp(Math.round(per + randRange(-6, 6)), 20, 99);
+    const spread = () => clamp(target + randRange(-8, 8), 10, 99);
+    const mechanics = spread(), gameSense = spread(), teamfight = spread(), laning = spread();
+    const overall = Math.round((mechanics + gameSense + teamfight + laning) / 4);
+    return {
+      id: idRef.current++,
+      name: generateName(used),
+      position: pos, tier: tierLabel || '1군',
+      mechanics, gameSense, teamfight, laning, overall,
+      champion: null, kills: 0, deaths: 0, assists: 0, damage: 0,
+    };
+  });
 }
 
 function homeFor(position, side) {
@@ -685,6 +710,10 @@ export default function App() {
   const [faPositionFilter, setFaPositionFilter] = useState('ALL');
   const [showPullModal, setShowPullModal] = useState(false);
   const [scrimRegionFilter, setScrimRegionFilter] = useState('ALL');
+  const [expandedChallengeId, setExpandedChallengeId] = useState(null);
+  const [viewingClub, setViewingClub] = useState(null);
+  const [viewingClubRosters, setViewingClubRosters] = useState(null);
+  const [clubDetailTier, setClubDetailTier] = useState('1군');
   const [rankingTab, setRankingTab] = useState('domestic');
   const [onlineMatchCode, setOnlineMatchCode] = useState(null);
   const [myInviteCode, setMyInviteCode] = useState(null);
@@ -814,6 +843,15 @@ export default function App() {
     });
     setRenameId(null);
     setRenameInput('');
+  }
+
+  function handleSetTier(playerId, newTier) {
+    setGame((prev) => {
+      const newPlayers = prev.players.map((p) => (p.id === playerId ? { ...p, tier: newTier } : p));
+      const newGame = { ...prev, players: newPlayers };
+      saveGame(newGame);
+      return newGame;
+    });
   }
 
   function handleDeclareFA(playerId, priceStr) {
@@ -958,11 +996,24 @@ export default function App() {
     }
   }
 
-  function handleChallenge(opp) {
-    setSelectedOpponent(opp);
-    setOpponentLineup(generateOpponentLineup(opp.power));
+  function handleChallenge(opp, tier) {
+    const chosenTier = tier || '1군';
+    const power = chosenTier === '2군' ? (opp.power2 || Math.round(opp.power * 0.7)) : opp.power;
+    const oppWithTier = { ...opp, name: `${opp.name} ${chosenTier}`, baseName: opp.name, challengeTier: chosenTier };
+    setSelectedOpponent(oppWithTier);
+    setOpponentLineup(generateOpponentLineup(power, chosenTier));
     setLineupChoice(POSITIONS.reduce((acc, p) => ({ ...acc, [p]: '1군' }), {}));
+    setExpandedChallengeId(null);
     setScreen('lineup');
+  }
+
+  function handleViewClubDetail(club) {
+    const roster1 = generateOpponentLineup(club.power, '1군');
+    const roster2 = generateOpponentLineup(club.power2 || Math.round(club.power * 0.7), '2군');
+    setViewingClub(club);
+    setViewingClubRosters({ tier1: roster1, tier2: roster2 });
+    setClubDetailTier('1군');
+    setScreen('clubDetail');
   }
 
   function handleChallengeClub(clubDef, leagueOverride) {
@@ -1543,9 +1594,14 @@ export default function App() {
   }
 
   function renderHome() {
+    const myTeamPower = computeTeamPower(game.players);
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <Header subtitle="구단 홈" />
+        <div className={`${panel} p-4 mb-4 flex items-center justify-between`}>
+          <span className="text-sm font-semibold">우리 구단 팀파워 (1군 기준)</span>
+          <span className="text-2xl font-bold" style={{ color: '#D9AE55' }}>{myTeamPower}</span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button onClick={() => setScreen('roster')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
             <Users size={26} color="#38BDF8" className="mb-2" />
@@ -1648,6 +1704,7 @@ export default function App() {
             </button>
           ))}
         </div>
+        <div className="text-xs mb-4 lm-muted">선수 카드의 1군/2군 배지를 탭하면 보직을 바로 전환할 수 있어요.</div>
         <div className="space-y-6">
           {filteredPositions.map((pos) => {
             const posPlayers = game.players.filter((p) => p.position === pos);
@@ -1692,7 +1749,12 @@ export default function App() {
                           >
                             <User size={30} color="#3A4670" />
                           </div>
-                          <TierBadge tier={p.tier} />
+                          <button
+                            onClick={() => handleSetTier(p.id, p.tier === '1군' ? '2군' : '1군')}
+                            title="탭하여 1군/2군 전환"
+                          >
+                            <TierBadge tier={p.tier} />
+                          </button>
                         </div>
 
                         <div className="text-center text-xs lm-muted">OVR <b className="lm-text-value">{p.overall}</b> · 잠재력 <b className="lm-text-value">{p.potential}</b></div>
@@ -2046,7 +2108,7 @@ export default function App() {
 
   function renderMatchSelect() {
     const allClubs = REGIONS.flatMap((r) => REGION_CLUBS[r]);
-    const filteredClubs = scrimRegionFilter === 'ALL' ? allClubs : REGION_CLUBS[scrimRegionFilter];
+    const filteredClubs = [...(scrimRegionFilter === 'ALL' ? allClubs : REGION_CLUBS[scrimRegionFilter])].sort((a, b) => a.power - b.power);
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <Header subtitle="상대 구단 선택 (단판 스크림)" />
@@ -2059,19 +2121,83 @@ export default function App() {
             </button>
           ))}
         </div>
+        <div className="text-xs mb-3 lm-muted">팀 파워가 낮은 구단부터 표시돼요.</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredClubs.map((opp) => (
-            <div key={opp.id} className={`${panel} p-5 flex items-center justify-between`}>
-              <div>
+            <div key={opp.id} className={`${panel} p-5`}>
+              <div className="mb-3">
                 <div className="font-bold text-lg">{opp.name}</div>
-                <div className="text-xs mt-1 lm-muted">등급: {powerTierLabel(opp.power)} · 지역: {opp.region} · 팀 파워 {opp.power}</div>
+                <div className="text-xs mt-1 lm-muted">등급: {powerTierLabel(opp.power)} · 지역: {opp.region}</div>
+                <div className="flex items-center gap-3 mt-1 text-xs lm-muted">
+                  <span>1군 파워 <b className="lm-text-value">{opp.power}</b></span>
+                  <span>2군 파워 <b className="lm-text-value">{opp.power2 || Math.round(opp.power * 0.7)}</b></span>
+                </div>
               </div>
-              <button onClick={() => handleChallenge(opp)} className={`${btnPrimary} px-4 py-2 text-sm flex items-center gap-1`}>
-                도전 <ChevronRight size={14} />
-              </button>
+              <div className="flex flex-col gap-2">
+                <button onClick={() => handleViewClubDetail(opp)} className={`${btnGhost} w-full py-2 text-sm`}>상세보기</button>
+                {expandedChallengeId === opp.id ? (
+                  <div className="flex gap-2">
+                    <button onClick={() => handleChallenge(opp, '1군')} className={`${btnPrimary} flex-1 py-2 text-sm`}>1군 도전</button>
+                    <button onClick={() => handleChallenge(opp, '2군')} className={`${btnPrimary} flex-1 py-2 text-sm`}>2군 도전</button>
+                    <button onClick={() => setExpandedChallengeId(null)} className={`${btnGhost} px-3 py-2 text-sm`}>✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setExpandedChallengeId(opp.id)} className={`${btnPrimary} w-full py-2 text-sm flex items-center justify-center gap-1`}>
+                    도전 <ChevronRight size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  function renderClubDetail() {
+    const club = viewingClub;
+    const rosters = viewingClubRosters;
+    const roster = clubDetailTier === '1군' ? rosters.tier1 : rosters.tier2;
+    const teamPower = roster.reduce((s, p) => s + p.overall, 0);
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <Header subtitle="상대 구단 상세정보" />
+        <button onClick={() => setScreen('matchSelect')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 목록으로</button>
+
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="font-bold text-xl">{club.name}</div>
+          <div className="text-xs mt-1 lm-muted">{club.region} · 등급 {powerTierLabel(club.power)}</div>
+          <div className="flex items-center gap-4 mt-2 text-sm">
+            <span className="lm-muted">1군 파워 <b className="lm-text-value">{club.power}</b></span>
+            <span className="lm-muted">2군 파워 <b className="lm-text-value">{club.power2 || Math.round(club.power * 0.7)}</b></span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => setClubDetailTier('1군')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${clubDetailTier === '1군' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>1군</button>
+          <button onClick={() => setClubDetailTier('2군')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${clubDetailTier === '2군' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>2군</button>
+        </div>
+
+        <div className="text-xs mb-3 lm-muted">이 라인업 팀 파워 합계: <span className="lm-text-value font-semibold">{teamPower}</span></div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          {roster.map((p) => (
+            <div key={p.id} className={`${panel} p-3`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold flex items-center gap-1.5"><PosBadge position={p.position} /> {p.name}</span>
+                <span className="text-xs lm-muted">OVR <b className="lm-text-value">{p.overall}</b></span>
+              </div>
+              <div className="space-y-1">
+                <StatBar label="피지컬" value={p.mechanics} color="#F59E0B" />
+                <StatBar label="운영" value={p.gameSense} color="#8B5CF6" />
+                <StatBar label="한타" value={p.teamfight} color="#EF4444" />
+                <StatBar label="라인전" value={p.laning} color="#38BDF8" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={() => handleChallenge(club, clubDetailTier)} className={`${btnPrimary} w-full py-3 text-sm`}>{clubDetailTier}으로 도전하기</button>
       </div>
     );
   }
@@ -2836,6 +2962,7 @@ export default function App() {
       {screen === 'onlineMatch' && game && renderOnlineMatch()}
       {screen === 'recruit' && game && renderRecruit()}
       {screen === 'matchSelect' && game && renderMatchSelect()}
+      {screen === 'clubDetail' && game && viewingClub && viewingClubRosters && renderClubDetail()}
       {screen === 'lineup' && game && selectedOpponent && renderLineup()}
       {screen === 'leagueRosterSetup' && game && game.league && renderLeagueRosterSetup()}
       {screen === 'leagueSchedule' && game && game.league && renderLeagueSchedule()}
