@@ -12,11 +12,11 @@ const PREFIXES = ['Silent', 'Blaze', 'Frost', 'Shadow', 'Storm', 'Crimson', 'Iro
 const SUFFIXES = ['Fox', 'Wolf', 'Falcon', 'Phoenix', 'Reaper', 'Blade', 'Striker', 'Knight', 'Ranger', 'Specter', 'Hawk', 'Viper', 'Drake', 'Sentinel', 'Nova', 'Fang', 'Storm', 'Edge', 'Soul', 'King'];
 
 const CHAMPIONS = {
-  TOP: ['가렌', '다리우스', '카밀', '레넥톤', '오른', '피오라', '나서스', '잭스', '세트', '아트록스', '쉔', '말파이트', '우디르', '볼리베어', '케넨', '신지드', '초가스', '트린다미어', '이렐리아', '럼블'],
-  JGL: ['리 신', '비에고', '자르반 4세', '다이애나', '세주아니', '그레이브즈', '니달리', '킨드레드', '헤카림', '릴리아', '엘리스', '카직스', '렝가', '노커', '워윅', '아무무', '자크', '벨베스', '판테온', '문도 박사'],
-  MID: ['아리', '제드', '야스오', '오리아나', '신드라', '르블랑', '아칼리', '빅토르', '탈리야', '카시오페아', '트위스티드 페이트', '라이즈', '벡스', '조이', '카타리나', '베이가', '직스', '코르키', '피즈', '갈리오'],
-  ADC: ['징크스', '케이틀린', '이즈리얼', '카이사', '베인', '진', '애쉬', '루시안', '시비르', '자야', '트리스타나', '바루스', '미스 포츈', '드레이븐', '칼리스타', '아펠리오스', '사미라', '자히리', '세나', '니코'],
-  SUP: ['쓰레쉬', '룰루', '레오나', '노틸러스', '유미', '알리스타', '브라움', '나미', '라칸', '카르마', '파이크', '세라핀', '소나', '벨코즈', '밀리오', '렐', '자이라', '모르가나', '바드', '스웨인'],
+  TOP: ['가렌', '다리우스', '카밀', '레넥톤', '오른', '피오라', '나서스', '잭스', '세트', '아트록스', '쉔', '말파이트', '우디르', '볼리베어', '케넨', '신지드', '초가스', '트린다미어', '이렐리아', '럼블', '그웬', '크산테', '사이온', '퀸', '뽀삐'],
+  JGL: ['리 신', '비에고', '자르반 4세', '다이애나', '세주아니', '그레이브즈', '니달리', '킨드레드', '헤카림', '릴리아', '엘리스', '카직스', '렝가', '노커', '워윅', '아무무', '자크', '벨베스', '판테온', '문도 박사', '마스터 이', '오공', '나피리', '이블린', '신짜오'],
+  MID: ['아리', '제드', '야스오', '오리아나', '신드라', '르블랑', '아칼리', '빅토르', '탈리야', '카시오페아', '트위스티드 페이트', '라이즈', '벡스', '조이', '카타리나', '베이가', '직스', '코르키', '피즈', '갈리오', '아지르', '럭스', '아우렐리온 솔', '카사딘', '하이머딩거'],
+  ADC: ['징크스', '케이틀린', '이즈리얼', '카이사', '베인', '진', '애쉬', '루시안', '시비르', '자야', '트리스타나', '바루스', '미스 포츈', '드레이븐', '칼리스타', '아펠리오스', '사미라', '자히리', '세나', '니코', '코그모', '트위치', '제리', '스몰더', '우르곳'],
+  SUP: ['쓰레쉬', '룰루', '레오나', '노틸러스', '유미', '알리스타', '브라움', '나미', '라칸', '카르마', '파이크', '세라핀', '소나', '벨코즈', '밀리오', '렐', '자이라', '모르가나', '바드', '스웨인', '잔나', '탐 켄치', '블리츠크랭크', '레나타 글라스크', '소라카'],
 };
 const ALL_CHAMPION_NAMES = Object.values(CHAMPIONS).flat();
 const ALL_CHAMPIONS_FLAT = Object.entries(CHAMPIONS).flatMap(([role, names]) => names.map((name) => ({ name, role })));
@@ -40,6 +40,25 @@ function assignPicksToPositions(picks) {
     if (!assignment[pos]) assignment[pos] = leftoverPicks[li++];
   });
   return assignment;
+}
+
+// 픽 단계에서 아직 채우지 못한 포지션에 맞는 챔피언을 가급적 우선으로 고른다.
+// 이미 5명 다 픽했거나 부족한 포지션 챔피언이 전부 밴/픽되어 없으면 전체 후보 중 무작위로 뽑는다.
+function pickPositionAwareChampion(available, currentPicks) {
+  const coveredPositions = new Set();
+  const remaining = [...currentPicks];
+  const used = new Array(remaining.length).fill(false);
+  POSITIONS.forEach((pos) => {
+    const idx = remaining.findIndex((c, i) => !used[i] && CHAMPIONS[pos].includes(c));
+    if (idx !== -1) { coveredPositions.add(pos); used[idx] = true; }
+  });
+  const neededPositions = POSITIONS.filter((pos) => !coveredPositions.has(pos));
+  if (neededPositions.length > 0) {
+    const availableSet = new Set(available);
+    const candidates = neededPositions.flatMap((pos) => CHAMPIONS[pos].filter((c) => availableSet.has(c)));
+    if (candidates.length > 0) return candidates[randRange(0, candidates.length - 1)];
+  }
+  return available[randRange(0, available.length - 1)];
 }
 
 // 챔피언 개별 상성: 두 챔피언 이름 조합마다 고유하고 대칭적인(A가 유리하면 B는 그만큼 불리한) 상성값을 부여한다
@@ -436,6 +455,11 @@ const CHAMPION_WEAPON = {
   '알리스타': '🛡️', '브라움': '🛡️', '나미': '🔱', '라칸': '🪶', '카르마': '🪭',
   '파이크': '🔱', '세라핀': '🎤', '소나': '🎻', '벨코즈': '👁️', '밀리오': '🔥',
   '렐': '🔨', '자이라': '🌿', '모르가나': '⛓️', '바드': '🪄', '스웨인': '🐦',
+  '그웬': '✂️', '크산테': '🛡️', '사이온': '🪓', '퀸': '🏹', '뽀삐': '🔨',
+  '마스터 이': '⚔️', '오공': '🐒', '나피리': '🗡️', '이블린': '😈', '신짜오': '🔱',
+  '아지르': '🏺', '럭스': '✨', '아우렐리온 솔': '⭐', '카사딘': '🌀', '하이머딩거': '🔧',
+  '코그모': '👄', '트위치': '🏹', '제리': '⚡', '스몰더': '🔥', '우르곳': '🦾',
+  '잔나': '🌪️', '탐 켄치': '👅', '블리츠크랭크': '🤖', '레나타 글라스크': '⛓️', '소라카': '🌟',
 };
 
 function computeTeamPower(players, tier = '1군') {
@@ -1713,7 +1737,7 @@ export default function App() {
       const bannedSet = new Set([...draft.userBans, ...draft.aiBans]);
       const pickedSet = new Set([...draft.userPicks, ...draft.aiPicks]);
       const available = ALL_CHAMPION_NAMES.filter((n) => !bannedSet.has(n) && !pickedSet.has(n));
-      if (available.length > 0) processPick('user', available[randRange(0, available.length - 1)]);
+      if (available.length > 0) processPick('user', pickPositionAwareChampion(available, draft.userPicks));
     }
   }, [turnTimeLeft]);
 
@@ -1729,7 +1753,7 @@ export default function App() {
       const pickedSet = new Set([...draft.userPicks, ...draft.aiPicks]);
       const available = ALL_CHAMPION_NAMES.filter((n) => !bannedSet.has(n) && !pickedSet.has(n));
       if (available.length === 0) return;
-      const choice = available[randRange(0, available.length - 1)];
+      const choice = isBanPhase(draft.phase) ? available[randRange(0, available.length - 1)] : pickPositionAwareChampion(available, draft.aiPicks);
       if (isBanPhase(draft.phase)) processBan('ai', choice); else processPick('ai', choice);
     }, 650);
     return () => { cancelled = true; clearTimeout(t); };
