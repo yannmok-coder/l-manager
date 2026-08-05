@@ -21,6 +21,27 @@ const CHAMPIONS = {
 const ALL_CHAMPION_NAMES = Object.values(CHAMPIONS).flat();
 const ALL_CHAMPIONS_FLAT = Object.entries(CHAMPIONS).flatMap(([role, names]) => names.map((name) => ({ name, role })));
 
+// 픽한 5개 챔피언을 가급적 각자 원래 포지션(역할군)에 맞춰 배정한다.
+// 해당 포지션 챔피언이 픽 목록에 없으면 남는 픽으로 채운다.
+function assignPicksToPositions(picks) {
+  const remaining = [...picks];
+  const used = new Array(remaining.length).fill(false);
+  const assignment = {};
+  POSITIONS.forEach((pos) => {
+    const idx = remaining.findIndex((c, i) => !used[i] && CHAMPIONS[pos].includes(c));
+    if (idx !== -1) {
+      assignment[pos] = remaining[idx];
+      used[idx] = true;
+    }
+  });
+  const leftoverPicks = remaining.filter((c, i) => !used[i]);
+  let li = 0;
+  POSITIONS.forEach((pos) => {
+    if (!assignment[pos]) assignment[pos] = leftoverPicks[li++];
+  });
+  return assignment;
+}
+
 // 챔피언 개별 상성: 두 챔피언 이름 조합마다 고유하고 대칭적인(A가 유리하면 B는 그만큼 불리한) 상성값을 부여한다
 function champPairHash(a, b) {
   const s = a + '|' + b;
@@ -532,13 +553,18 @@ function homeFor(position, side) {
 
 const BASE = { user: { x: 0.10, y: 0.94 }, ai: { x: 0.90, y: 0.06 } };
 // 외곽(먼저 파괴)에서 본진 쪽(나중에 파괴) 순서로 정렬된 팀별 타워 좌표
+// 라인별 1차~3차 타워(9개) + 넥서스를 지키는 쌍둥이 타워(2개) = 총 11개
 const BLUE_TOWERS = [
-  { x: 47, y: 54 }, { x: 10, y: 22 }, { x: 72, y: 90 }, { x: 30, y: 70 },
-  { x: 10, y: 47 }, { x: 50, y: 90 }, { x: 10, y: 70 }, { x: 27, y: 90 },
+  { x: 11, y: 32 }, { x: 56, y: 56 }, { x: 30, y: 90 },
+  { x: 10, y: 50 }, { x: 38, y: 70 }, { x: 50, y: 90 },
+  { x: 10, y: 70 }, { x: 22, y: 80 }, { x: 70, y: 90 },
+  { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
-  { x: 53, y: 46 }, { x: 90, y: 78 }, { x: 38, y: 8 }, { x: 70, y: 26 },
-  { x: 92, y: 55 }, { x: 60, y: 8 }, { x: 92, y: 25 }, { x: 78, y: 8 },
+  { x: 35, y: 9 }, { x: 44, y: 44 }, { x: 92, y: 68 },
+  { x: 58, y: 8 }, { x: 62, y: 30 }, { x: 92, y: 45 },
+  { x: 80, y: 8 }, { x: 78, y: 20 }, { x: 92, y: 25 },
+  { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
 const ZONES = {
   topLane: { x: 0.26, y: 0.12 },
@@ -550,6 +576,8 @@ const ZONES = {
   botJungle: { x: 0.78, y: 0.58 },
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
+  baronPit: { x: 0.21, y: 0.23 },
+  dragonPit: { x: 0.79, y: 0.77 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다 (상대 넥서스 안쪽은 제외, 최종 결전에서만 사용)
 function pickZone(tickRatio) {
@@ -596,6 +624,8 @@ function tickAdvance(prev) {
   const objectives = {
     user: { towers: prev.objectives.user.towers, barons: prev.objectives.user.barons, dragons: [...prev.objectives.user.dragons] },
     ai: { towers: prev.objectives.ai.towers, barons: prev.objectives.ai.barons, dragons: [...prev.objectives.ai.dragons] },
+    nextDragonTick: prev.objectives.nextDragonTick != null ? prev.objectives.nextDragonTick : 5,
+    nextBaronTick: prev.objectives.nextBaronTick != null ? prev.objectives.nextBaronTick : 20,
   };
   let elderBuff = prev.elderBuff && prev.elderBuff.ticksLeft > 1 ? { ...prev.elderBuff, ticksLeft: prev.elderBuff.ticksLeft - 1 } : null;
 
@@ -610,42 +640,127 @@ function tickAdvance(prev) {
     return chance;
   }
 
-  function resolveSkirmish() {
-    const attackerSide = Math.random() < sideChance() ? 'user' : 'ai';
-    const defenderSide = attackerSide === 'user' ? 'ai' : 'user';
-    const atkArr = attackerSide === 'user' ? userLineup : aiLineup;
-    const defArr = defenderSide === 'user' ? userLineup : aiLineup;
-    const atkIdx = randRange(0, 4);
-    const defIdx = randRange(0, 4);
-    const attacker = atkArr[atkIdx];
-    const defender = defArr[defIdx];
-    attacker.damage = (attacker.damage || 0) + Math.round(attacker.overall * 4) + randRange(50, 150);
-    defender.damage = (defender.damage || 0) + Math.round(defender.overall * 3) + randRange(30, 100);
-    const rawStatProb = attacker.overall / (attacker.overall + defender.overall);
-    const champMod = championMatchupMod(attacker.champion, defender.champion);
-    const statAdvantage = attacker.overall - defender.overall;
-    // 능력치 격차가 클수록(공격자가 더 강할수록) 상성의 영향력이 줄어든다 = 상성을 실력으로 극복
-    const matchupWeight = clamp(1 - statAdvantage / 30, 0.15, 1.5);
-    const winProb = clamp(rawStatProb + champMod * matchupWeight, 0.08, 0.92);
-    if (Math.random() < winProb) {
-      attacker.kills++; defender.deaths++;
-      if (Math.random() < 0.65) {
-        let aIdx = randRange(0, 4);
-        if (aIdx === atkIdx) aIdx = (aIdx + 1) % 5;
-        atkArr[aIdx].assists++;
-      }
-      if (attackerSide === 'user') userScore += 2; else aiScore += 2;
-      log = [{ id: tick + '-' + Math.random(), text: `${attacker.name}(${POS_LABEL[attacker.position]})님이 ${defender.name}(${POS_LABEL[defender.position]})님을 처치했습니다!` }, ...log].slice(0, 6);
-      eventParticipants = [`${attackerSide}-${atkIdx}`, `${defenderSide}-${defIdx}`];
-      return true;
-    } else if (Math.random() < 0.3) {
-      defender.kills++; attacker.deaths++;
-      if (defenderSide === 'user') userScore += 2; else aiScore += 2;
-      log = [{ id: tick + '-' + Math.random(), text: `${defender.name}(${POS_LABEL[defender.position]})님이 ${attacker.name}(${POS_LABEL[attacker.position]})님을 역으로 처치했습니다!` }, ...log].slice(0, 6);
-      eventParticipants = [`${attackerSide}-${atkIdx}`, `${defenderSide}-${defIdx}`];
-      return true;
+  const killCap = prev.killCap != null ? prev.killCap : 28;
+
+  function currentTotalKills() {
+    return userLineup.reduce((s, p) => s + p.kills, 0) + aiLineup.reduce((s, p) => s + p.kills, 0);
+  }
+
+  function sample(list, n) {
+    const arr = [...list];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randRange(0, i);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return false;
+    return arr.slice(0, Math.max(0, n));
+  }
+
+  function availablePlayers(arr) {
+    return arr.map((p, i) => ({ p, i })).filter(({ p }) => tick >= (p.respawnAtTick || 0));
+  }
+
+  let capBurstUsed = prev.capBurstUsed || false;
+
+  function resolveTeamfight() {
+    const remainingBudget = killCap - currentTotalKills();
+    if (remainingBudget <= 0) return false;
+
+    const userAvail = availablePlayers(userLineup);
+    const aiAvail = availablePlayers(aiLineup);
+    if (userAvail.length === 0 || aiAvail.length === 0) return false;
+
+    // 킬 상한에 가까워지면(남은 여유 3~8킬) 마지막으로 양팀이 크게 모이는 결정적 한타를 한 번 터뜨린다
+    const isCapBurst = !capBurstUsed && remainingBudget >= 3 && remainingBudget <= 8;
+
+    // 교전에 모이는 인원 수를 무작위로 정한다 (많이 모일수록 이후 킬 상한도 늘어난다)
+    const userCount = isCapBurst ? Math.min(5, userAvail.length) : randRange(1, Math.min(5, userAvail.length));
+    const aiCount = isCapBurst ? Math.min(5, aiAvail.length) : randRange(1, Math.min(5, aiAvail.length));
+    const userParticipants = sample(userAvail, userCount);
+    const aiParticipants = sample(aiAvail, aiCount);
+
+    userParticipants.forEach(({ p }) => { p.damage = (p.damage || 0) + Math.round(p.overall * 3.2) + randRange(40, 120); });
+    aiParticipants.forEach(({ p }) => { p.damage = (p.damage || 0) + Math.round(p.overall * 3.2) + randRange(40, 120); });
+
+    const userTeamPower = userParticipants.reduce((s, { p }) => s + p.overall, 0);
+    const aiTeamPower = aiParticipants.reduce((s, { p }) => s + p.overall, 0);
+    const rawProb = userTeamPower / (userTeamPower + aiTeamPower);
+    let matchupSum = 0, matchupCount = 0;
+    userParticipants.forEach(({ p: up }) => {
+      aiParticipants.forEach(({ p: ap }) => {
+        matchupSum += championMatchupMod(up.champion, ap.champion);
+        matchupCount++;
+      });
+    });
+    const avgMatchup = matchupCount > 0 ? matchupSum / matchupCount : 0;
+    const statAdvantage = userTeamPower - aiTeamPower;
+    const matchupWeight = clamp(1 - statAdvantage / 60, 0.15, 1.5);
+    const combinedProb = clamp(rawProb * 0.55 + sideChance() * 0.45 + avgMatchup * matchupWeight, 0.08, 0.92);
+    const winSide = Math.random() < combinedProb ? 'user' : 'ai';
+    const winParticipants = winSide === 'user' ? userParticipants : aiParticipants;
+    const loseParticipants = winSide === 'user' ? aiParticipants : userParticipants;
+
+    // 분당(교전당) 0~9킬, 모인 인원이 많을수록 최대치가 늘어난다 (마무리 폭발 시에는 3~8킬로 고정)
+    const totalParticipants = userCount + aiCount;
+    const maxKillsThisFight = clamp(totalParticipants, 1, 9);
+    let killsThisFight = isCapBurst ? randRange(3, Math.min(8, remainingBudget)) : randRange(0, maxKillsThisFight);
+    killsThisFight = Math.min(killsThisFight, loseParticipants.length, remainingBudget);
+    if (killsThisFight <= 0) return false;
+    if (isCapBurst) capBurstUsed = true;
+
+    // 죽을 경우 게임 진행도에 따라 리스폰 시간이 늘어난다 (2~6분)
+    const respawnDuration = Math.round(2 + tickRatio * 4);
+    const victims = sample(loseParticipants, killsThisFight);
+    const killNames = [];
+    const killTally = new Map();
+    // 서포터는 상대적으로 킬 확률을 낮게, 그 외 포지션은 동일 가중치로 킬러를 뽑는다
+    function pickKiller(participants) {
+      const weights = participants.map(({ p }) => (p.position === 'SUP' ? 0.2 : 1));
+      const total = weights.reduce((a, b) => a + b, 0);
+      let roll = Math.random() * total;
+      for (let idx = 0; idx < participants.length; idx++) {
+        if (roll < weights[idx]) return participants[idx].p;
+        roll -= weights[idx];
+      }
+      return participants[participants.length - 1].p;
+    }
+    victims.forEach(({ p: victim }) => {
+      victim.deaths++;
+      victim.respawnAtTick = tick + respawnDuration;
+      const killer = pickKiller(winParticipants);
+      killer.kills++;
+      killNames.push(victim.name);
+      killTally.set(killer, (killTally.get(killer) || 0) + 1);
+      log = [{ id: tick + '-' + Math.random(), text: `${killer.name}(${killer.champion})님이 ${victim.name}(${victim.champion})님을 처치했습니다!` }, ...log].slice(0, 6);
+      winParticipants.forEach(({ p: assistCandidate }) => {
+        if (assistCandidate === killer) return;
+        const assistChance = assistCandidate.position === 'SUP' ? 0.85 : 0.5;
+        if (Math.random() < assistChance) assistCandidate.assists++;
+      });
+    });
+
+    if (winSide === 'user') userScore += killsThisFight * 2; else aiScore += killsThisFight * 2;
+    const winLabel = winSide === 'user' ? '우리 팀' : '상대 팀';
+
+    // 한타 내 멀티킬 로그
+    const multiKillLabels = { 2: '더블킬', 3: '트리플킬', 4: '쿼드라킬', 5: '펜타킬' };
+    killTally.forEach((count, killerPlayer) => {
+      if (multiKillLabels[count]) {
+        log = [{ id: tick + '-' + Math.random(), text: `${killerPlayer.champion}이(가) ${multiKillLabels[count]}!` }, ...log].slice(0, 6);
+      }
+    });
+
+    // 한타 내 상대 팀 전원(5명) 전멸 시 ACE 로그
+    const losingFullLineup = winSide === 'user' ? aiLineup : userLineup;
+    const isAce = losingFullLineup.length === 5 && losingFullLineup.every((p) => tick < (p.respawnAtTick || 0));
+    if (isAce) {
+      log = [{ id: tick + '-' + Math.random(), text: `${winLabel} ACE!` }, ...log].slice(0, 6);
+    }
+
+    eventParticipants = [
+      ...userParticipants.map(({ i }) => 'user-' + i),
+      ...aiParticipants.map(({ i }) => 'ai-' + i),
+    ];
+    return true;
   }
 
   function resolveObjective(type) {
@@ -657,7 +772,9 @@ function tickAdvance(prev) {
       objectives[side].towers += 1;
     } else if (type === '바론') {
       objectives[side].barons += 1;
+      objectives.nextBaronTick = tick + 6;
     } else if (type === '드래곤') {
+      objectives.nextDragonTick = tick + 5;
       const elderReady = Math.max(objectives.user.dragons.length, objectives.ai.dragons.length) >= 4;
       if (elderReady) {
         objectives[side].dragons.push('장로');
@@ -684,8 +801,8 @@ function tickAdvance(prev) {
   const nearEnd = tick >= prev.totalTicks - 2;
 
   if (isFinalTick) {
-    resolveSkirmish();
-    if (eventParticipants.length === 0) resolveSkirmish();
+    resolveTeamfight();
+    if (eventParticipants.length === 0) resolveTeamfight();
 
     // 최종 안전장치: 페이스 보정에도 불구하고 여전히 미달이면 마지막에 최소한만 채운다(대부분 이미 충족된 상태)
     const totalDragonsNow = objectives.user.dragons.length + objectives.ai.dragons.length;
@@ -718,41 +835,46 @@ function tickAdvance(prev) {
       const ap = aiLineup.reduce((s, p) => s + p.overall, 0);
       finalWin = up === ap ? Math.random() < 0.5 : up > ap;
     }
-    return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: true, eventParticipants: allKeys, objectives, finalWin, elderBuff };
+    return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: true, eventParticipants: allKeys, objectives, finalWin, elderBuff, capBurstUsed };
   }
 
   const totalBarons = objectives.user.barons + objectives.ai.barons;
-  const skirmishChance = 0.34;
+  const skirmishChance = 0.65;
   let towerChance = 0.20 + tickRatio * 0.10;
   if (towerBehind) towerChance += nearEnd ? 0.45 : 0.20;
-  let dragonChance = 0.07 + tickRatio * 0.05;
-  if (dragonBehind) dragonChance += nearEnd ? 0.35 : 0.15;
-  const baronChance = (totalBarons < 2 && tickRatio > 0.5) ? 0.05 : 0;
+  const dragonAvailable = tick >= objectives.nextDragonTick;
+  let dragonChance = 0;
+  if (dragonAvailable) {
+    dragonChance = 0.07 + tickRatio * 0.05;
+    if (dragonBehind) dragonChance += nearEnd ? 0.35 : 0.15;
+  }
+  const baronAvailable = tick >= objectives.nextBaronTick;
+  const baronChance = (baronAvailable && totalBarons < 2) ? 0.05 : 0;
   const heraldChance = tickRatio < 0.55 ? 0.05 : 0;
 
   const roll = Math.random();
   let acc = 0;
   let gatherPoint = null;
   if (roll < (acc += skirmishChance)) {
-    resolveSkirmish();
+    resolveTeamfight();
   } else if (roll < (acc += towerChance)) {
     const { side, objLogLabel } = resolveObjective('타워');
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 처치했습니다! (+3점)` }, ...log].slice(0, 6);
+    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 처치했습니다!` }, ...log].slice(0, 6);
   } else if (roll < (acc += dragonChance)) {
     const { side, objLogLabel, isElder } = resolveObjective('드래곤');
-    const flavor = isElder ? `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 치열한 한타 끝에 ${objLogLabel}을(를) 처치했습니다! 승리에 대한 확신이 차오릅니다! (+3점)` : `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 드래곤 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다! (+3점)`;
+    const flavor = isElder ? `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 치열한 한타 끝에 ${objLogLabel}을(를) 처치했습니다! 승리에 대한 확신이 차오릅니다!` : `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 드래곤 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!`;
     log = [{ id: tick + '-' + Math.random(), text: flavor }, ...log].slice(0, 6);
     eventParticipants = [...userLineup.map((_, i) => 'user-' + i), ...aiLineup.map((_, i) => 'ai-' + i)];
-    gatherPoint = { x: ZONES.botRiver.x * 100, y: ZONES.botRiver.y * 100 };
+    gatherPoint = { x: ZONES.dragonPit.x * 100, y: ZONES.dragonPit.y * 100 };
   } else if (roll < (acc += baronChance)) {
     const { side, objLogLabel } = resolveObjective('바론');
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 바론 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다! (+3점)` }, ...log].slice(0, 6);
+    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 바론 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!` }, ...log].slice(0, 6);
     eventParticipants = [...userLineup.map((_, i) => 'user-' + i), ...aiLineup.map((_, i) => 'ai-' + i)];
-    gatherPoint = { x: ZONES.topRiver.x * 100, y: ZONES.topRiver.y * 100 };
+    gatherPoint = { x: ZONES.baronPit.x * 100, y: ZONES.baronPit.y * 100 };
   } else if (roll < (acc += heraldChance)) {
     const side = Math.random() < sideChance() ? 'user' : 'ai';
     if (side === 'user') userScore += 3; else aiScore += 3;
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 전령을(를) 처치했습니다! (+3점)` }, ...log].slice(0, 6);
+    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 전령을(를) 처치했습니다!` }, ...log].slice(0, 6);
   }
 
   let positions;
@@ -762,7 +884,7 @@ function tickAdvance(prev) {
     const clashPoint = eventParticipants.length === 2 ? pickZone(tickRatio) : null;
     positions = computePositions(userLineup, aiLineup, eventParticipants, clashPoint);
   }
-  return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: false, eventParticipants, objectives, elderBuff };
+  return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: false, eventParticipants, objectives, elderBuff, capBurstUsed };
 }
 
 /* ============================== 작은 컴포넌트 ============================== */
@@ -1615,9 +1737,7 @@ export default function App() {
 
   useEffect(() => {
     if (draft && draft.phase === 'done' && draft.userPicks.length === 5) {
-      const def = {};
-      POSITIONS.forEach((pos, i) => { def[pos] = draft.userPicks[i]; });
-      setChampAssignment(def);
+      setChampAssignment(assignPicksToPositions(draft.userPicks));
     }
   }, [draft && draft.phase]);
 
@@ -1644,16 +1764,19 @@ export default function App() {
   }
 
   function initSim() {
-    const userFinal = userLineup.map((u) => ({ ...u, champion: champAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0 }));
-    const aiFinal = opponentLineup.map((a, i) => ({ ...a, champion: draft.aiPicks[i], kills: 0, deaths: 0, assists: 0, damage: 0 }));
+    const userFinal = userLineup.map((u) => ({ ...u, champion: champAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
+    const aiAssignment = assignPicksToPositions(draft.aiPicks);
+    const aiFinal = opponentLineup.map((a) => ({ ...a, champion: aiAssignment[a.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
     const totalTicks = randRange(21, 34);
     setSim({
       tick: 0, totalTicks, userLineup: userFinal, aiLineup: aiFinal,
       userScore: 0, aiScore: 0, log: [], finished: false,
       positions: computePositions(userFinal, aiFinal, []), eventParticipants: [],
-      objectives: { user: { towers: 0, barons: 0, dragons: [] }, ai: { towers: 0, barons: 0, dragons: [] } },
+      objectives: { user: { towers: 0, barons: 0, dragons: [] }, ai: { towers: 0, barons: 0, dragons: [] }, nextDragonTick: 5, nextBaronTick: 20 },
       elderBuff: null,
       finalWin: null,
+      killCap: randRange(13, 43),
+      capBurstUsed: false,
     });
     setScreen('sim');
   }
@@ -1777,10 +1900,12 @@ export default function App() {
     const prevHistory = game.matchHistory || [];
     let matchHistory = prevHistory;
     if (!isLeague) {
+      const userKillTotal = sim.userLineup.reduce((s, p) => s + p.kills, 0);
+      const aiKillTotal = sim.aiLineup.reduce((s, p) => s + p.kills, 0);
       matchHistory = [{
         id: Date.now() + '-' + Math.random(),
         opponentName: selectedOpponent.name, win: wasWin,
-        scoreLabel: `${sim.userScore}:${sim.aiScore}`, playTime: sim.tick, context: onlineMatchCode ? '온라인 매칭' : '구단 스크림',
+        scoreLabel: `${userKillTotal}:${aiKillTotal}`, playTime: sim.tick, context: onlineMatchCode ? '온라인 매칭' : '구단 스크림',
       }, ...prevHistory];
     } else if (seriesDecided) {
       matchHistory = [{
@@ -1799,7 +1924,7 @@ export default function App() {
             const data = JSON.parse(res.value);
             data.challengers = [...(data.challengers || []), {
               name: game.club.name, result: wasWin ? 'win' : 'loss',
-              score: `${sim.userScore}:${sim.aiScore}`, challengedAt: Date.now(),
+              score: `${sim.userLineup.reduce((s, p) => s + p.kills, 0)}:${sim.aiLineup.reduce((s, p) => s + p.kills, 0)}`, challengedAt: Date.now(),
             }];
             await window.storage.set('onlinematch:' + codeToReport, JSON.stringify(data), true);
           }
@@ -2923,6 +3048,9 @@ export default function App() {
       );
     }
 
+    const userKillScore = s.userLineup.reduce((sum, p) => sum + p.kills, 0);
+    const aiKillScore = s.aiLineup.reduce((sum, p) => sum + p.kills, 0);
+
     const headerNode = (
       <div className="mb-2">
         {s.finished && (
@@ -2936,7 +3064,7 @@ export default function App() {
             {objRow('user')}
           </div>
           <div className="text-center">
-            <div className="text-4xl leading-none" style={displayFont}>{s.userScore} : {s.aiScore}</div>
+            <div className="text-4xl leading-none" style={displayFont}>{userKillScore} : {aiKillScore}</div>
             <div className="text-xs mt-1 lm-muted">{s.finished ? `${s.tick}분 경과 / 총 ${s.totalTicks}분 · 경기 종료` : `${s.tick}분 경과`}</div>
             {game.league && game.league.current && (
               <div className="text-xs mt-0.5 lm-muted">시리즈 {game.league.current.userWins}:{game.league.current.aiWins} · {game.league.current.gameNumber}경기</div>
@@ -2950,36 +3078,28 @@ export default function App() {
       </div>
     );
 
-    const progressNode = (
-      <div className="h-1.5 rounded-full overflow-hidden lm-track">
-        {s.finished ? (
-          <div className="h-full" style={{ width: '100%', backgroundColor: '#C89B3C' }} />
-        ) : (
-          <div className="h-full animate-pulse" style={{ width: '100%', backgroundColor: '#C89B3C', opacity: 0.35 }} />
-        )}
-      </div>
-    );
-
     const teamPanelsNode = (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className={`${panel} p-3`}>
-          <div className="text-xs font-semibold mb-2" style={{ color: '#38BDF8' }}>우리 팀</div>
-          {s.userLineup.map((p, i) => (
-            <div key={p.id} className="flex items-center justify-between text-xs py-1" style={{ borderBottom: i < s.userLineup.length - 1 ? '1px solid #1D2740' : 'none' }}>
-              <span className="flex items-center gap-1.5"><PosBadge position={p.position} /> {p.name} <span className="lm-dim">({p.champion})</span></span>
-              <span className="font-mono lm-text-value">{p.kills}/{p.deaths}/{p.assists}</span>
-            </div>
-          ))}
+      <div className={`${panel} p-3`}>
+        <div className="flex items-center justify-between text-xs font-semibold mb-2 px-1">
+          <span style={{ color: '#38BDF8' }}>우리 팀</span>
+          <span style={{ color: '#EF4444' }}>상대 팀</span>
         </div>
-        <div className={`${panel} p-3`}>
-          <div className="text-xs font-semibold mb-2" style={{ color: '#EF4444' }}>상대 팀</div>
-          {s.aiLineup.map((p, i) => (
-            <div key={p.id} className="flex items-center justify-between text-xs py-1" style={{ borderBottom: i < s.aiLineup.length - 1 ? '1px solid #1D2740' : 'none' }}>
-              <span className="flex items-center gap-1.5"><PosBadge position={p.position} /> {p.name} <span className="lm-dim">({p.champion})</span></span>
-              <span className="font-mono lm-text-value">{p.kills}/{p.deaths}/{p.assists}</span>
+        {s.userLineup.map((p, i) => {
+          const ai = s.aiLineup[i];
+          return (
+            <div key={p.id} className="flex items-center justify-between text-xs py-1.5 gap-1.5" style={{ borderBottom: i < s.userLineup.length - 1 ? '1px solid #1D2740' : 'none' }}>
+              <span className="flex items-center gap-1.5 min-w-0 flex-1">
+                <span className="truncate">{p.name} <span className="lm-dim">({p.champion})</span></span>
+              </span>
+              <span className="font-mono lm-text-value shrink-0">{p.kills}/{p.deaths}/{p.assists}</span>
+              <span className="lm-dim shrink-0">vs</span>
+              <span className="font-mono lm-text-value shrink-0">{ai.kills}/{ai.deaths}/{ai.assists}</span>
+              <span className="flex items-center gap-1.5 min-w-0 flex-1 justify-end text-right">
+                <span className="truncate">({ai.champion}) {ai.name}</span>
+              </span>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     );
 
@@ -2999,8 +3119,8 @@ export default function App() {
         <div className="absolute inset-0" style={{ clipPath: 'polygon(0% 55%, 0% 100%, 45% 100%)', background: 'rgba(59,130,246,0.12)' }} />
         <div className="absolute inset-0" style={{ clipPath: 'polygon(100% 45%, 100% 0%, 55% 0%)', background: 'rgba(239,68,68,0.12)' }} />
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
-          <path d="M 0,36 Q 32,30 44,48 Q 58,68 100,60" stroke="rgba(80,175,215,0.65)" strokeWidth="6.5" fill="none" strokeLinecap="round" />
-          <path d="M 0,36 Q 32,30 44,48 Q 58,68 100,60" stroke="rgba(210,240,250,0.55)" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 4,6 Q 22,24 50,50 Q 78,76 96,94" stroke="rgba(80,175,215,0.65)" strokeWidth="6.5" fill="none" strokeLinecap="round" />
+          <path d="M 4,6 Q 22,24 50,50 Q 78,76 96,94" stroke="rgba(210,240,250,0.55)" strokeWidth="2" fill="none" strokeLinecap="round" />
           <path d="M 10,90 L 10,18 Q 10,8 20,8 L 90,8" stroke="rgba(230,215,165,0.65)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
           <path d="M 10,90 L 82,90 Q 92,90 92,80 L 92,10" stroke="rgba(230,215,165,0.65)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
           <path d="M 12,86 Q 50,50 88,14" stroke="rgba(230,215,165,0.5)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
@@ -3013,11 +3133,11 @@ export default function App() {
           <polygon points="10,89.3 12.3,93 10,96.7 7.7,93" fill="#60CFFF" fillOpacity="0.95" stroke="#DBF3FF" strokeWidth="0.3" />
           <polygon points="90,4.3 92.3,8 90,11.7 87.7,8" fill="#FF6B6B" fillOpacity="0.95" stroke="#FFE1E1" strokeWidth="0.3" />
           <polygon
-            points={`${ZONES.topRiver.x * 100},${ZONES.topRiver.y * 100 - 2.6} ${ZONES.topRiver.x * 100 + 2.6},${ZONES.topRiver.y * 100} ${ZONES.topRiver.x * 100},${ZONES.topRiver.y * 100 + 2.6} ${ZONES.topRiver.x * 100 - 2.6},${ZONES.topRiver.y * 100}`}
+            points={`${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 - 2.6} ${ZONES.baronPit.x * 100 + 2.6},${ZONES.baronPit.y * 100} ${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 + 2.6} ${ZONES.baronPit.x * 100 - 2.6},${ZONES.baronPit.y * 100}`}
             fill="#C084FC" fillOpacity="0.85" stroke="#F3E8FF" strokeWidth="0.3" className="animate-pulse"
           />
           <polygon
-            points={`${ZONES.botRiver.x * 100},${ZONES.botRiver.y * 100 - 2.6} ${ZONES.botRiver.x * 100 + 2.6},${ZONES.botRiver.y * 100} ${ZONES.botRiver.x * 100},${ZONES.botRiver.y * 100 + 2.6} ${ZONES.botRiver.x * 100 - 2.6},${ZONES.botRiver.y * 100}`}
+            points={`${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 - 2.6} ${ZONES.dragonPit.x * 100 + 2.6},${ZONES.dragonPit.y * 100} ${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 + 2.6} ${ZONES.dragonPit.x * 100 - 2.6},${ZONES.dragonPit.y * 100}`}
             fill="#FB923C" fillOpacity="0.85" stroke="#FFEDD5" strokeWidth="0.3" className="animate-pulse"
           />
         </svg>
@@ -3026,8 +3146,8 @@ export default function App() {
         ))}
         <div className="absolute rounded-full" style={{ left: '16%', top: '58%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '76%', top: '38%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
-        <div className="absolute rounded-full" style={{ left: `${(ZONES.topRiver.x - 0.07) * 100}%`, top: `${(ZONES.topRiver.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(192,132,252,0.5), transparent 75%)' }} />
-        <div className="absolute rounded-full" style={{ left: `${(ZONES.botRiver.x - 0.07) * 100}%`, top: `${(ZONES.botRiver.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(251,146,60,0.5), transparent 75%)' }} />
+        <div className="absolute rounded-full" style={{ left: `${(ZONES.baronPit.x - 0.07) * 100}%`, top: `${(ZONES.baronPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(192,132,252,0.5), transparent 75%)' }} />
+        <div className="absolute rounded-full" style={{ left: `${(ZONES.dragonPit.x - 0.07) * 100}%`, top: `${(ZONES.dragonPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(251,146,60,0.5), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '1%', top: '85%', width: '18%', height: '18%', background: 'radial-gradient(circle, rgba(56,189,248,0.7), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '81%', top: '-3%', width: '18%', height: '18%', background: 'radial-gradient(circle, rgba(239,68,68,0.7), transparent 75%)' }} />
         {s.userLineup.map((p, i) => {
@@ -3067,7 +3187,6 @@ export default function App() {
       return (
         <div className="w-full h-screen overflow-y-auto p-3">
           {headerNode}
-          <div className="mb-3">{progressNode}</div>
           <div className="mb-3">{teamPanelsNode}</div>
           <div className="flex gap-3 mb-3">
             <div className="w-44 shrink-0">
@@ -3087,7 +3206,6 @@ export default function App() {
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         {headerNode}
-        <div className="mb-6">{progressNode}</div>
         <div className="mb-6">{teamPanelsNode}</div>
         <div className="w-full sm:max-w-md mx-auto">
           <div className="relative w-full aspect-square rounded-xl overflow-hidden" style={mapBoxStyle}>
@@ -3106,11 +3224,9 @@ export default function App() {
     const r = lastResult;
     const delta = r.newClubValue - r.oldClubValue;
     const mvp = [...r.details].sort((a, b) => (b.kills + b.assists - b.deaths) - (a.kills + a.assists - a.deaths))[0];
-    const allDamage = [
-      ...r.details.map((d) => ({ ...d, team: 'user' })),
-      ...r.aiDetails.map((d) => ({ ...d, team: 'ai' })),
-    ].sort((a, b) => b.damage - a.damage);
-    const maxDamage = Math.max(...allDamage.map((d) => d.damage), 1);
+    const userKillScore = r.details.reduce((s, d) => s + d.kills, 0);
+    const aiKillScore = r.aiDetails.reduce((s, d) => s + d.kills, 0);
+    const globalMaxDamage = Math.max(...r.details.map((d) => d.damage), ...r.aiDetails.map((d) => d.damage), 1);
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-8">
         <div className="text-center mb-6">
@@ -3120,7 +3236,7 @@ export default function App() {
               <div className="text-sm font-bold" style={{ color: r.win ? '#2DD4C6' : '#EF4444' }}>{r.win ? '승리' : '패배'}</div>
             </div>
             <div>
-              <div className="text-4xl tracking-wide" style={displayFont}>{r.userScore} : {r.aiScore}</div>
+              <div className="text-4xl tracking-wide" style={displayFont}>{userKillScore} : {aiKillScore}</div>
               <div className="text-xs mt-1 lm-muted">플레이 타임 {r.playTime}분</div>
             </div>
             <div className="text-right">
@@ -3132,23 +3248,33 @@ export default function App() {
         </div>
 
         <div className={`${panel} p-4 mb-4`}>
-          <div className="text-sm font-semibold mb-3">선수별 딜량</div>
-          <div className="space-y-2">
-            {allDamage.map((d) => (
-              <div key={d.team + '-' + d.id}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="flex items-center gap-1.5">
-                    <PosBadge position={d.position} />
-                    <span style={{ color: d.team === 'user' ? '#38BDF8' : '#EF4444' }}>{d.name}</span>
-                    <span className="lm-dim">({d.champion})</span>
-                  </span>
-                  <span className="lm-text-value font-mono">{d.damage.toLocaleString()}</span>
+          <div className="text-sm font-semibold mb-3">선수별 딜량 비교</div>
+          <div className="space-y-3">
+            {r.details.map((d, i) => {
+              const ai = r.aiDetails[i];
+              return (
+                <div key={d.id}>
+                  <div className="flex items-center justify-between text-xs mb-1 gap-2">
+                    <span className="flex items-center gap-1 min-w-0 flex-1" style={{ color: '#38BDF8' }}>
+                      <span className="truncate">{d.name} <span className="lm-dim">({d.champion})</span></span>
+                    </span>
+                    <span className="font-mono lm-text-value shrink-0">{d.damage.toLocaleString()}</span>
+                    <span className="font-mono lm-text-value shrink-0">{ai.damage.toLocaleString()}</span>
+                    <span className="flex items-center gap-1 min-w-0 flex-1 justify-end text-right" style={{ color: '#EF4444' }}>
+                      <span className="truncate">({ai.champion}) {ai.name}</span>
+                    </span>
+                  </div>
+                  <div className="flex gap-1 h-2">
+                    <div className="flex-1 rounded-full overflow-hidden lm-track">
+                      <div className="h-full rounded-full" style={{ width: `${(d.damage / globalMaxDamage) * 100}%`, backgroundColor: '#3B82F6' }} />
+                    </div>
+                    <div className="flex-1 rounded-full overflow-hidden lm-track flex justify-end">
+                      <div className="h-full rounded-full" style={{ width: `${(ai.damage / globalMaxDamage) * 100}%`, backgroundColor: '#EF4444' }} />
+                    </div>
+                  </div>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden lm-track">
-                  <div className="h-full rounded-full" style={{ width: `${(d.damage / maxDamage) * 100}%`, backgroundColor: d.team === 'user' ? '#3B82F6' : '#EF4444' }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -3221,6 +3347,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        <button onClick={() => setWaitCountdown(0)} className={`${btnPrimary} w-full py-3 mt-6 text-sm`}>준비완료 (바로 시작)</button>
       </div>
     );
   }
