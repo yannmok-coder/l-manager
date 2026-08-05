@@ -64,6 +64,53 @@ const LEAGUE_NAME = {
 const TURN_TIME_LIMIT = 15;
 const GAME_WAIT_SECONDS = 30;
 
+const KST_TIMEZONE = 'Asia/Seoul';
+
+// 주어진 Date를 한국시간(KST) 기준으로 분해한다
+function getKSTParts(date) {
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: KST_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const map = {};
+  parts.forEach((p) => { map[p.type] = p.value; });
+  // 자정 직후 hour가 '24'로 나오는 브라우저 대응
+  if (map.hour === '24') map.hour = '00';
+  return map;
+}
+
+// 한국시간 기준 "오늘 날짜" 키 (일일 초기화 판정용) - 기기 시간이 아닌 온라인 동기화 시간을 넘겨써야 조작 방지가 된다
+function todayString(date) {
+  const p = getKSTParts(date || new Date());
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+// 지역리그/국제리그 포인트 보상
+const REGIONAL_REWARD = { join: 200, win: 100, rank3: 200, rank2: 300, rank1: 500 };
+const INTERNATIONAL_REWARD = { join: 1000, win: 300, rank3: 1000, rank2: 1500, rank1: 2000 };
+
+// FA 시장 새로고침 일일 제한
+const FA_REFRESH_DAILY_LIMIT = 5;
+
+// 스폰서 시스템
+const SPONSOR_CATEGORIES = {
+  '통신사': ['m텔레콤', 'm모바일원', 'm커넥트', 'm텔레콴', 'm링크텔'],
+  '게이밍 의자': ['m체어킹', 'm시트프로', 'm게이밍시트', 'm에르고체어', 'm레이서시트'],
+  '게이밍 모니터': ['m뷰텍', 'm디스플레이랩', 'm모니터스', 'm클리어뷰', 'm픽셀코어'],
+  '전자': ['m일렉트로', 'm테크노바', 'm전자월드', 'm스마트텍', 'm디지털코어'],
+  '에너지드링크': ['m부스트', 'm에너지웨이브', 'm파워드링크', 'm레이지업', 'm스파크드링크'],
+  '자동차': ['m모터스', 'm오토드라이브', 'm카브랜드', 'm스피드모터', 'm레이싱카'],
+  '대기업': ['m글로벌그룹', 'm홀딩스', 'm코퍼레이션', 'm인더스트리', 'm엔터프라이즈'],
+};
+const SPONSOR_VALUE_PER_SLOT = 5000;
+const SPONSOR_DAILY_RATE = 0.05;
+function generateSponsorOffer(category, usedNames) {
+  const pool = SPONSOR_CATEGORIES[category].filter((n) => !usedNames.includes(n));
+  const names = pool.length > 0 ? pool : SPONSOR_CATEGORIES[category];
+  const companyName = names[randRange(0, names.length - 1)];
+  return { id: category + '-' + companyName + '-' + Date.now(), category, companyName };
+}
+
 const TEAM_PREFIXES = ['골든', '실버', '레드', '블랙', '화이트', '나이트', '선더', '크림슨', '스톰', '아이언'];
 const TEAM_SUFFIXES = ['드래곤', '폭스', '울브즈', '나이츠', '스콰드', '타이탄', '팬텀', '레이븐즈', '가디언즈', '헌터스'];
 function buildRegionClubs(region, regionIndex) {
@@ -260,7 +307,7 @@ function resolveWinner(a, b) {
   return Math.random() < pa ? a : b;
 }
 
-// 국제전 진출권 순위 조회용 (실제 대진 없이 참가 자격만 계산)
+// 국제 리그 진출권 순위 조회용 (실제 대진 없이 참가 자격만 계산)
 function getInternationalQualifiers(game) {
   const regionFirsts = [];
   const regionSeconds = [];
@@ -368,11 +415,11 @@ const CHAMPION_WEAPON = {
   '렐': '🔨', '자이라': '🌿', '모르가나': '⛓️', '바드': '🪄', '스웨인': '🐦',
 };
 
-function computeTeamPower(players) {
+function computeTeamPower(players, tier = '1군') {
   return POSITIONS.reduce((sum, pos) => {
     const candidates = players.filter((p) => p.position === pos);
     if (candidates.length === 0) return sum;
-    const starter = candidates.find((p) => p.tier === '1군') || [...candidates].sort((a, b) => b.overall - a.overall)[0];
+    const starter = candidates.find((p) => p.tier === tier) || [...candidates].sort((a, b) => b.overall - a.overall)[0];
     return sum + starter.overall;
   }, 0);
 }
@@ -700,6 +747,7 @@ export default function App() {
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [entryPoolDraft, setEntryPoolDraft] = useState({});
   const [leagueStartConfirm, setLeagueStartConfirm] = useState(null);
+  const [leagueTierChoice, setLeagueTierChoice] = useState(null);
   const [rosterFilter, setRosterFilter] = useState('ALL');
   const [releaseConfirmId, setReleaseConfirmId] = useState(null);
   const [renameId, setRenameId] = useState(null);
@@ -723,15 +771,53 @@ export default function App() {
   const [faMarket, setFaMarket] = useState(null);
   const [faDeclareId, setFaDeclareId] = useState(null);
   const [faPriceInput, setFaPriceInput] = useState('');
+  const [faDeclareMode, setFaDeclareMode] = useState(null);
+  const [lastCreatedSaleCode, setLastCreatedSaleCode] = useState(null);
+  const [saleCodeClaimMessage, setSaleCodeClaimMessage] = useState('');
+  const [playerCodeInput, setPlayerCodeInput] = useState('');
+  const [playerCodeStatus, setPlayerCodeStatus] = useState('');
+  const [faRefreshStatus, setFaRefreshStatus] = useState('');
   const [sim, setSim] = useState(null);
   const [lastResult, setLastResult] = useState(null);
   const [isLandscape, setIsLandscape] = useState(false);
+  const [timeOffsetMs, setTimeOffsetMs] = useState(0);
+  const [timeSynced, setTimeSynced] = useState(false);
+  const [clockTick, setClockTick] = useState(0);
   const [turnTimeLeft, setTurnTimeLeft] = useState(TURN_TIME_LIMIT);
   const [waitCountdown, setWaitCountdown] = useState(GAME_WAIT_SECONDS);
   const [draftIntroCountdown, setDraftIntroCountdown] = useState(5);
 
   const usedNamesRef = useRef(new Set());
   const idRef = useRef(1);
+
+  // 기기 자체 시간이 아닌 온라인(네트워크) 시간을 기준으로 삼기 위한 동기화.
+  // 기기 시간을 조작해서 스폰서 일일 수익이나 FA 새로고침 횟수를 초기화하는 걸 막기 위함.
+  function getOnlineNow() {
+    return new Date(Date.now() + timeOffsetMs);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    async function syncTime() {
+      try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Seoul', { cache: 'no-store' });
+        const data = await res.json();
+        if (cancelled || !data || !data.unixtime) return;
+        setTimeOffsetMs(data.unixtime * 1000 - Date.now());
+        setTimeSynced(true);
+      } catch (e) {
+        if (!cancelled) setTimeSynced(false);
+      }
+    }
+    syncTime();
+    const resync = setInterval(syncTime, 10 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(resync); };
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setClockTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     function checkOrientation() {
@@ -749,6 +835,24 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [screen]);
+
+  useEffect(() => {
+    if (!game) return;
+    const today = todayString(getOnlineNow());
+    const sponsors = game.club.sponsors || [];
+    if (sponsors.length === 0) return;
+    if (game.club.lastSponsorClaimDate === today) return;
+    setGame((prev) => {
+      if (prev.club.lastSponsorClaimDate === today) return prev;
+      const prevSponsors = prev.club.sponsors || [];
+      if (prevSponsors.length === 0) return prev;
+      const dailyIncome = prevSponsors.length * Math.round(prev.club.value * SPONSOR_DAILY_RATE);
+      const club = { ...prev.club, budget: prev.club.budget + dailyIncome, lastSponsorClaimDate: today };
+      const newGame = { ...prev, club };
+      saveGame(newGame);
+      return newGame;
+    });
+  }, [game, timeOffsetMs]);
 
 
   useEffect(() => {
@@ -854,11 +958,25 @@ export default function App() {
     });
   }
 
+  function handleSignSponsor(category) {
+    setGame((prev) => {
+      const sponsors = prev.club.sponsors || [];
+      const maxSlots = Math.floor(prev.club.value / SPONSOR_VALUE_PER_SLOT);
+      if (sponsors.length >= maxSlots) return prev;
+      const usedNames = sponsors.map((s) => s.companyName);
+      const offer = generateSponsorOffer(category, usedNames);
+      const newSponsors = [...sponsors, { id: offer.id, category, companyName: offer.companyName, signedAt: Date.now() }];
+      const club = { ...prev.club, sponsors: newSponsors };
+      const newGame = { ...prev, club };
+      saveGame(newGame);
+      return newGame;
+    });
+  }
+
   function handleDeclareFA(playerId, priceStr) {
-    const price = Math.max(1, Math.round(Number(priceStr) || 0));
-    if (!price) return;
     const player = game.players.find((p) => p.id === playerId);
     if (!player) return;
+    const price = clamp(Math.round(Number(priceStr) || 0), 1, player.value);
     const listing = { ...player, price, fromClub: game.club.name, source: 'user' };
     setGame((prev) => {
       const newPlayers = prev.players.filter((p) => p.id !== playerId);
@@ -874,6 +992,103 @@ export default function App() {
     });
     setFaDeclareId(null);
     setFaPriceInput('');
+    setFaDeclareMode(null);
+  }
+
+  async function handleCreateSaleCode(playerId, priceStr) {
+    const player = game.players.find((p) => p.id === playerId);
+    if (!player) return;
+    const price = clamp(Math.round(Number(priceStr) || 0), 1, player.value);
+    const code = generateInviteCode();
+    const snapshot = {
+      position: player.position, name: player.name, tier: player.tier,
+      mechanics: player.mechanics, gameSense: player.gameSense, teamfight: player.teamfight, laning: player.laning,
+      overall: player.overall, potential: player.potential,
+    };
+    const record = { code, sellerClubName: game.club.name, player: snapshot, price, sold: false, buyerClubName: null, createdAt: Date.now() };
+    try {
+      await window.storage.set('playersale:' + code, JSON.stringify(record), true);
+    } catch (e) {
+      setInviteCodeStatus('코드 생성에 실패했어요.');
+      return;
+    }
+    setGame((prev) => {
+      const newPlayers = prev.players.filter((p) => p.id !== playerId);
+      const mySaleCodes = [...(prev.club.mySaleCodes || []), { code, playerName: player.name, price, claimed: false }];
+      const club = { ...prev.club, value: newPlayers.reduce((s, p) => s + p.value, 0), mySaleCodes };
+      const newGame = { ...prev, club, players: newPlayers };
+      saveGame(newGame);
+      return newGame;
+    });
+    setFaDeclareId(null);
+    setFaPriceInput('');
+    setFaDeclareMode(null);
+    setLastCreatedSaleCode(code);
+  }
+
+  async function handleCheckSaleCodes() {
+    const codes = (game.club.mySaleCodes || []).filter((c) => !c.claimed);
+    if (codes.length === 0) return;
+    let totalClaim = 0;
+    const updatedCodes = [...(game.club.mySaleCodes || [])];
+    for (const entry of codes) {
+      try {
+        const res = await window.storage.get('playersale:' + entry.code, true);
+        if (res && res.value) {
+          const data = JSON.parse(res.value);
+          if (data.sold) {
+            totalClaim += entry.price;
+            const idx = updatedCodes.findIndex((c) => c.code === entry.code);
+            if (idx !== -1) updatedCodes[idx] = { ...updatedCodes[idx], claimed: true, buyerClubName: data.buyerClubName };
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    if (totalClaim > 0) {
+      setGame((prev) => {
+        const club = { ...prev.club, budget: prev.club.budget + totalClaim, mySaleCodes: updatedCodes };
+        const newGame = { ...prev, club };
+        saveGame(newGame);
+        return newGame;
+      });
+      setSaleCodeClaimMessage(`판매 대금 ${totalClaim.toLocaleString()}P를 받았어요!`);
+    } else {
+      setGame((prev) => {
+        const club = { ...prev.club, mySaleCodes: updatedCodes };
+        const newGame = { ...prev, club };
+        saveGame(newGame);
+        return newGame;
+      });
+      setSaleCodeClaimMessage('아직 판매되지 않았어요.');
+    }
+  }
+
+  async function handleBuyPlayerCode() {
+    const code = playerCodeInput.trim().toUpperCase();
+    if (!code) return;
+    setPlayerCodeStatus('조회 중...');
+    try {
+      const res = await window.storage.get('playersale:' + code, true);
+      if (!res || !res.value) { setPlayerCodeStatus('해당 코드를 찾을 수 없어요.'); return; }
+      const data = JSON.parse(res.value);
+      if (data.sold) { setPlayerCodeStatus('이미 판매 완료된 선수예요.'); return; }
+      if (game.club.budget < data.price) { setPlayerCodeStatus('포인트가 부족해요.'); return; }
+      const newPlayer = { id: idRef.current++, ...data.player, exp: 0, level: 1, value: Math.round(data.player.overall * 12 + data.player.potential * 4) };
+      setGame((prev) => {
+        const players = [...prev.players, newPlayer];
+        const club = { ...prev.club, budget: prev.club.budget - data.price, value: players.reduce((s, p) => s + p.value, 0) };
+        const newGame = { ...prev, club, players };
+        saveGame(newGame);
+        return newGame;
+      });
+      data.sold = true;
+      data.buyerClubName = game.club.name;
+      await window.storage.set('playersale:' + code, JSON.stringify(data), true);
+      setPlayerCodeStatus(`${data.player.name} 선수를 영입했어요!`);
+      setPlayerCodeInput('');
+    } catch (e) {
+      setPlayerCodeStatus('오류가 발생했어요.');
+    }
   }
 
   function handleBuyFA(listingId) {
@@ -895,6 +1110,19 @@ export default function App() {
   }
 
   function handleRefreshMarket() {
+    const today = todayString(getOnlineNow());
+    const usedToday = game.club.faRefreshDate === today ? (game.club.faRefreshCount || 0) : 0;
+    if (usedToday >= FA_REFRESH_DAILY_LIMIT) {
+      setFaRefreshStatus(`오늘은 새로고침을 모두 사용했어요 (최대 ${FA_REFRESH_DAILY_LIMIT}회).`);
+      return;
+    }
+    setFaRefreshStatus('');
+    setGame((prev) => {
+      const club = { ...prev.club, faRefreshDate: today, faRefreshCount: usedToday + 1 };
+      const newGame = { ...prev, club };
+      saveGame(newGame);
+      return newGame;
+    });
     setFaMarket((prev) => {
       const keptListings = (prev || []).filter((l) => l.source === 'user' || l.source === 'special');
       const npcListings = generateFullNpcMarket(usedNamesRef, idRef);
@@ -1074,20 +1302,22 @@ export default function App() {
     });
   }
 
-  function handleConfirmLeagueStart() {
-    if (leagueStartConfirm === 'regional') handleStartRegionalLeague();
-    else if (leagueStartConfirm === 'international') handleStartInternational();
+  function handleConfirmLeagueStart(tier) {
+    const chosenTier = tier || '1군';
+    if (leagueStartConfirm === 'regional') handleStartRegionalLeague(chosenTier);
+    else if (leagueStartConfirm === 'international') handleStartInternational(chosenTier);
     setLeagueStartConfirm(null);
+    setLeagueTierChoice(null);
   }
 
-  function handleStartRegionalLeague() {
+  function handleStartRegionalLeague(tier) {
     const region = game.club.region || REGIONS[0];
     const queue = [...REGION_CLUBS[region]];
     for (let i = queue.length - 1; i > 0; i--) {
       const j = randRange(0, i);
       [queue[i], queue[j]] = [queue[j], queue[i]];
     }
-    const league = { type: 'regional', region, queue, results: [], current: null, entryPool: null, started: false, roundIndex: 0, roundLabel: LEAGUE_NAME[region] || '지역 리그' };
+    const league = { type: 'regional', tier: tier || '1군', region, queue, results: [], current: null, entryPool: null, started: false, roundIndex: 0, roundLabel: LEAGUE_NAME[region] || '지역 리그' };
     setGame((prev) => {
       const newGame = { ...prev, league };
       saveGame(newGame);
@@ -1097,11 +1327,11 @@ export default function App() {
     setScreen('leagueRosterSetup');
   }
 
-  function handleStartInternational() {
+  function handleStartInternational(tier) {
     const bracket = setupInternationalBracket(game);
     if (!bracket.userOpponent) return;
     const league = {
-      type: 'international', region: game.club.region, queue: [bracket.userOpponent], results: [], current: null, entryPool: null, started: false,
+      type: 'international', tier: tier || '1군', region: game.club.region, queue: [bracket.userOpponent], results: [], current: null, entryPool: null, started: false,
       roundIndex: 0, roundLabel: '8강',
       shadow: { semiOpponent: bracket.semiOtherPairWinner, finalOpponent: bracket.otherHalfFinalist },
     };
@@ -1118,6 +1348,14 @@ export default function App() {
     const league = game.league;
     const queue = [...league.queue];
     const first = queue.shift();
+    const tierMult = league.tier === '2군' ? 0.5 : 1;
+    const joinReward = Math.round((league.type === 'regional' ? REGIONAL_REWARD.join : INTERNATIONAL_REWARD.join) * tierMult);
+    setGame((prev) => {
+      const club = { ...prev.club, budget: prev.club.budget + joinReward };
+      const newGame = { ...prev, club };
+      saveGame(newGame);
+      return newGame;
+    });
     handleChallengeClub(first, { ...league, queue });
   }
 
@@ -1173,14 +1411,16 @@ export default function App() {
 
   function handleFinishLeague() {
     const league = game.league;
+    const tierMult = league && league.tier === '2군' ? 0.5 : 1;
     if (league && league.type === 'regional' && league.queue.length === 0) {
       const userWinsCount = league.results.filter((x) => x.won).length;
       const aiScores = REGION_CLUBS[league.region].map((c) => c.power);
       const userScore = userWinsCount * 40;
       const allScores = [...aiScores, userScore].sort((a, b) => b - a);
       const rank = allScores.indexOf(userScore) + 1;
+      const rankReward = Math.round((rank === 1 ? REGIONAL_REWARD.rank1 : rank === 2 ? REGIONAL_REWARD.rank2 : rank === 3 ? REGIONAL_REWARD.rank3 : 0) * tierMult);
       setGame((prev) => {
-        const club = { ...prev.club, qualifiedRank: rank, qualifiedRegion: league.region, qualifiedWins: userWinsCount };
+        const club = { ...prev.club, qualifiedRank: rank, qualifiedRegion: league.region, qualifiedWins: userWinsCount, budget: prev.club.budget + rankReward };
         const newGame = { ...prev, club, league: null };
         saveGame(newGame);
         return newGame;
@@ -1193,8 +1433,9 @@ export default function App() {
       else if (!wonLast && league.roundIndex === 2) placement = '준우승';
       else if (!wonLast && league.roundIndex === 1) placement = '4강';
       else if (!wonLast && league.roundIndex === 0) placement = '8강';
+      const rankReward = Math.round((placement === '우승' ? INTERNATIONAL_REWARD.rank1 : placement === '준우승' ? INTERNATIONAL_REWARD.rank2 : placement === '4강' ? INTERNATIONAL_REWARD.rank3 : 0) * tierMult);
       setGame((prev) => {
-        const club = placement ? { ...prev.club, internationalResult: placement } : prev.club;
+        const club = { ...prev.club, ...(placement ? { internationalResult: placement } : {}), budget: prev.club.budget + rankReward };
         const newGame = { ...prev, club, league: null };
         saveGame(newGame);
         return newGame;
@@ -1449,6 +1690,11 @@ export default function App() {
         seriesWon = cur.userWins >= 2;
         club.wins += seriesWon ? 1 : 0;
         club.losses += seriesWon ? 0 : 1;
+        if (seriesWon) {
+          const winBase = game.league.type === 'regional' ? REGIONAL_REWARD.win : INTERNATIONAL_REWARD.win;
+          const winReward = Math.round(winBase * (game.league.tier === '2군' ? 0.5 : 1));
+          club.budget += winReward;
+        }
         newLeague = { ...game.league, current: null, results: [...game.league.results, { id: game.league.current.opponent.id, name: game.league.current.opponent.name, won: seriesWon }] };
       } else {
         newLeague = { ...game.league, current: cur };
@@ -1525,7 +1771,7 @@ export default function App() {
               <span className="text-xs px-1.5 py-0.5 rounded lm-tier-2">{LEAGUE_NAME[game.club.region] || '지역리그'} {game.club.qualifiedRank}위</span>
             )}
             {game.club.internationalResult && (
-              <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: '#C89B3C', color: '#1A1305' }}>국제전 {game.club.internationalResult}</span>
+              <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: '#C89B3C', color: '#1A1305' }}>국제 리그 {game.club.internationalResult}</span>
             )}
           </button>
           {subtitle && <p className="text-xs mt-1 lm-muted">{subtitle}</p>}
@@ -1594,19 +1840,26 @@ export default function App() {
   }
 
   function renderHome() {
-    const myTeamPower = computeTeamPower(game.players);
+    const nowParts = getKSTParts(getOnlineNow());
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-8">
-        <Header subtitle="구단 홈" />
-        <div className={`${panel} p-4 mb-4 flex items-center justify-between`}>
-          <span className="text-sm font-semibold">우리 구단 팀파워 (1군 기준)</span>
-          <span className="text-2xl font-bold" style={{ color: '#D9AE55' }}>{myTeamPower}</span>
+        <div className={`${panel} p-3 mb-4 flex items-center justify-center gap-2`}>
+          <span className="text-sm font-semibold tracking-wide">
+            {nowParts.year}년 {nowParts.month}월 {nowParts.day}일 {nowParts.hour}:{nowParts.minute}
+          </span>
+          <span className="text-xs lm-dim">(한국시간{timeSynced ? '' : ' · 동기화 중'})</span>
         </div>
+        <Header subtitle="구단 홈" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button onClick={() => setScreen('roster')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
             <Users size={26} color="#38BDF8" className="mb-2" />
             <div className="font-bold text-lg">선수단</div>
             <div className="text-xs mt-1 lm-muted">보유 선수 {game.players.length}명 확인 및 관리</div>
+          </button>
+          <button onClick={() => { setPullResults([]); setShowPullModal(false); setScreen('recruit'); }} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
+            <ArrowLeftRight size={26} color="#2DD4C6" className="mb-2" />
+            <div className="font-bold text-lg">선수 영입</div>
+            <div className="text-xs mt-1 lm-muted">신인 뽑기 · FA 시장 · {game.club.budget.toLocaleString()} P 보유</div>
           </button>
           <button
             onClick={() => setScreen('matchSelect')}
@@ -1621,16 +1874,6 @@ export default function App() {
                 : '상대 구단과 단판 친선 매치'}
             </div>
           </button>
-          <button onClick={() => { setPullResults([]); setShowPullModal(false); setScreen('recruit'); }} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
-            <ArrowLeftRight size={26} color="#2DD4C6" className="mb-2" />
-            <div className="font-bold text-lg">선수 영입</div>
-            <div className="text-xs mt-1 lm-muted">신인 뽑기 · FA 시장 · {game.club.budget.toLocaleString()} P 보유</div>
-          </button>
-          <button onClick={() => setScreen('onlineMatch')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
-            <Users size={26} color="#38BDF8" className="mb-2" />
-            <div className="font-bold text-lg">온라인 매칭</div>
-            <div className="text-xs mt-1 lm-muted">초대 코드로 다른 유저 구단과 비동기 스크림</div>
-          </button>
           {(() => {
             const regionalActive = game.league && game.league.type === 'regional';
             const intlActive = game.league && game.league.type === 'international';
@@ -1644,16 +1887,16 @@ export default function App() {
                 >
                   <Trophy size={26} color="#38BDF8" className="mb-2" />
                   <div className="font-bold text-lg flex items-center gap-1.5 flex-wrap">
-                    지역 리그
+                    국내 리그
                     <span className="text-xs px-1.5 py-0.5 rounded lm-tier-2">{game.club.region || REGIONS[0]}</span>
-                    {regionalActive && <span className="text-xs lm-muted">(진행 중)</span>}
+                    {regionalActive && <span className="text-xs lm-muted">({game.league.tier} 진행 중)</span>}
                   </div>
                   <div className="text-xs mt-1 lm-muted">{LEAGUE_NAME[game.club.region || REGIONS[0]]} · {REGION_CLUBS[game.club.region || REGIONS[0]].length}개 구단 라운드로빈{regionalActive ? ` · ${game.league.results.length}/${REGION_CLUBS[game.club.region || REGIONS[0]].length} 완료` : ''}</div>
                 </button>
                 {intlActive ? (
                   <button onClick={handleResumeLeague} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
                     <Trophy size={26} color="#C89B3C" className="mb-2" />
-                    <div className="font-bold text-lg">국제전 (진행 중)</div>
+                    <div className="font-bold text-lg">국제 리그 ({game.league.tier} 진행 중)</div>
                     <div className="text-xs mt-1 lm-muted">{game.league.roundLabel} 진행 중</div>
                   </button>
                 ) : (
@@ -1663,13 +1906,28 @@ export default function App() {
                     className={`${panel} lm-panel-hover p-6 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
                   >
                     <Trophy size={26} color="#C89B3C" className="mb-2" />
-                    <div className="font-bold text-lg">국제전</div>
+                    <div className="font-bold text-lg">국제 리그</div>
                     <div className="text-xs mt-1 lm-muted">{canJoinIntl ? '8개 구단 토너먼트 참가 가능' : '지역 리그 상위 2위 안에 들어야 참가 가능'}</div>
                   </button>
                 )}
               </>
             );
           })()}
+          <button onClick={() => setScreen('onlineMatch')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
+            <Users size={26} color="#38BDF8" className="mb-2" />
+            <div className="font-bold text-lg">온라인 매칭</div>
+            <div className="text-xs mt-1 lm-muted">초대 코드로 다른 유저 구단과 비동기 스크림</div>
+          </button>
+          <button onClick={() => setScreen('sponsors')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
+            <Coins size={26} color="#D9AE55" className="mb-2" />
+            <div className="font-bold text-lg">스폰서 구하기</div>
+            <div className="text-xs mt-1 lm-muted">계약 {(game.club.sponsors || []).length} / {Math.floor(game.club.value / SPONSOR_VALUE_PER_SLOT)} · 매일 자동 수익</div>
+          </button>
+          <button onClick={() => setScreen('guide')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
+            <Trophy size={26} color="#2DD4C6" className="mb-2" />
+            <div className="font-bold text-lg">게임 가이드</div>
+            <div className="text-xs mt-1 lm-muted">게임 설명 보기</div>
+          </button>
         </div>
         <button onClick={handleReset} className="mt-8 text-xs flex items-center gap-1 lm-dim lm-hover-muted">
           <RotateCcw size={12} /> 구단 초기화하고 새로 시작
@@ -1678,11 +1936,13 @@ export default function App() {
           <div className="fixed inset-0 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.6)', zIndex: 50 }}>
             <div className={`${panel} p-6 max-w-sm w-full text-center`}>
               <div className="text-lg font-bold mb-2">경기를 시작하시겠습니까?</div>
-              <div className="text-sm mb-6 lm-muted">경기가 시작되면 매치가 끝날 때까지 스크림을 할 수 없습니다.</div>
-              <div className="flex gap-3">
-                <button onClick={() => setLeagueStartConfirm(null)} className={`${btnGhost} flex-1 py-2.5 text-sm`}>취소하기</button>
-                <button onClick={handleConfirmLeagueStart} className={`${btnPrimary} flex-1 py-2.5 text-sm`}>진행하기</button>
+              <div className="text-sm mb-4 lm-muted">경기가 시작되면 매치가 끝날 때까지 스크림을 할 수 없습니다.</div>
+              <div className="text-xs mb-3 lm-muted">어느 등급으로 참가할까요? (2군은 보상이 절반이에요)</div>
+              <div className="flex gap-3 mb-3">
+                <button onClick={() => handleConfirmLeagueStart('1군')} className={`${btnPrimary} flex-1 py-2.5 text-sm`}>1군으로 참가</button>
+                <button onClick={() => handleConfirmLeagueStart('2군')} className={`${btnPrimary} flex-1 py-2.5 text-sm`}>2군으로 참가</button>
               </div>
+              <button onClick={() => setLeagueStartConfirm(null)} className={`${btnGhost} w-full py-2.5 text-sm`}>취소하기</button>
             </div>
           </div>
         )}
@@ -1692,10 +1952,25 @@ export default function App() {
 
   function renderRoster() {
     const filteredPositions = rosterFilter === 'ALL' ? POSITIONS : [rosterFilter];
+    const has2gun = game.players.some((p) => p.tier === '2군');
+    const power1 = computeTeamPower(game.players, '1군');
+    const power2 = has2gun ? computeTeamPower(game.players, '2군') : null;
     return (
       <div className="max-w-5xl mx-auto p-4 md:p-8">
         <Header subtitle="선수단 관리" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
+        <div className={`${panel} p-4 mb-4 flex items-center justify-between flex-wrap gap-3`}>
+          <div>
+            <span className="text-sm font-semibold">1군 팀파워</span>
+            <span className="text-2xl font-bold ml-2" style={{ color: '#D9AE55' }}>{power1}</span>
+          </div>
+          {has2gun && (
+            <div>
+              <span className="text-sm font-semibold">2군 팀파워</span>
+              <span className="text-2xl font-bold ml-2" style={{ color: '#9AA6C7' }}>{power2}</span>
+            </div>
+          )}
+        </div>
         <div className="flex flex-wrap gap-2 mb-6">
           <button onClick={() => setRosterFilter('ALL')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${rosterFilter === 'ALL' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>전체</button>
           {POSITIONS.map((pos) => (
@@ -1769,19 +2044,36 @@ export default function App() {
                           <StatBar label="라인전" value={p.laning} color="#38BDF8" />
                         </div>
                         {faDeclareId === p.id ? (
-                          <div className="flex flex-col gap-1.5">
-                            <input
-                              type="number"
-                              value={faPriceInput}
-                              onChange={(e) => setFaPriceInput(e.target.value)}
-                              placeholder="가격(P)"
-                              className="lm-input rounded-lg px-2 py-1 text-xs w-full"
-                            />
-                            <div className="flex gap-1.5">
-                              <button onClick={() => handleDeclareFA(p.id, faPriceInput)} disabled={!faPriceInput || Number(faPriceInput) <= 0} className="text-xs px-2 py-1 rounded lm-btn-primary font-semibold flex-1 disabled:opacity-40 disabled:cursor-not-allowed">등록</button>
-                              <button onClick={() => { setFaDeclareId(null); setFaPriceInput(''); }} className="text-xs px-2 py-1 rounded lm-btn-ghost flex-1">취소</button>
+                          faDeclareMode === null ? (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-xs lm-muted text-center">어떻게 판매할까요?</span>
+                              <button onClick={() => { setFaDeclareMode('market'); setFaPriceInput(String(p.value)); }} className="text-xs px-2 py-1 rounded lm-btn-ghost">FA 시장으로 보내기</button>
+                              <button onClick={() => { setFaDeclareMode('code'); setFaPriceInput(String(p.value)); }} className="text-xs px-2 py-1 rounded lm-btn-ghost">특정 유저에게 코드로 팔기</button>
+                              <button onClick={() => setFaDeclareId(null)} className="text-xs px-2 py-1 rounded lm-btn-ghost">취소</button>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="flex flex-col gap-1.5">
+                              <input
+                                type="number"
+                                value={faPriceInput}
+                                onChange={(e) => setFaPriceInput(String(clamp(Number(e.target.value) || 0, 0, p.value)))}
+                                placeholder="가격(P)"
+                                max={p.value}
+                                className="lm-input rounded-lg px-2 py-1 text-xs w-full"
+                              />
+                              <div className="text-xs lm-dim text-center">최대 {p.value.toLocaleString()}P (책정금액)</div>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => (faDeclareMode === 'market' ? handleDeclareFA(p.id, faPriceInput) : handleCreateSaleCode(p.id, faPriceInput))}
+                                  disabled={!faPriceInput || Number(faPriceInput) <= 0}
+                                  className="text-xs px-2 py-1 rounded lm-btn-primary font-semibold flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                  {faDeclareMode === 'market' ? 'FA 등록' : '코드 생성'}
+                                </button>
+                                <button onClick={() => { setFaDeclareId(null); setFaDeclareMode(null); setFaPriceInput(''); }} className="text-xs px-2 py-1 rounded lm-btn-ghost flex-1">취소</button>
+                              </div>
+                            </div>
+                          )
                         ) : releaseConfirmId === p.id ? (
                           <div className="flex flex-col gap-1.5">
                             <span className="text-xs lm-muted text-center">정말 방출하시겠습니까?</span>
@@ -1795,7 +2087,7 @@ export default function App() {
                         ) : (
                           <div className="flex flex-col gap-1.5">
                             <button onClick={() => setReleaseConfirmId(p.id)} className="text-xs px-2 py-1 rounded lm-btn-ghost" style={{ color: '#F87171' }}>방출</button>
-                            <button onClick={() => { setFaDeclareId(p.id); setFaPriceInput(String(p.value)); }} className="text-xs px-2 py-1 rounded lm-btn-ghost" style={{ color: '#38BDF8' }}>FA선언</button>
+                            <button onClick={() => { setFaDeclareId(p.id); setFaDeclareMode(null); }} className="text-xs px-2 py-1 rounded lm-btn-ghost" style={{ color: '#38BDF8' }}>FA선언</button>
                           </div>
                         )}
                       </div>
@@ -1806,6 +2098,105 @@ export default function App() {
             );
           })}
         </div>
+      </div>
+    );
+  }
+
+  function renderSponsors() {
+    const sponsors = game.club.sponsors || [];
+    const maxSlots = Math.floor(game.club.value / SPONSOR_VALUE_PER_SLOT);
+    const dailyPerSponsor = Math.round(game.club.value * SPONSOR_DAILY_RATE);
+    const categories = Object.keys(SPONSOR_CATEGORIES);
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <Header subtitle="스폰서 구하기" />
+        <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
+
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="text-sm font-semibold mb-1">스폰서 슬롯 {sponsors.length} / {maxSlots}</div>
+          <div className="text-xs lm-muted">구단 가치 {SPONSOR_VALUE_PER_SLOT.toLocaleString()}당 슬롯 1개가 생겨요. 스폰서 1곳당 매일 00시(날짜가 바뀔 때) 구단 가치의 {Math.round(SPONSOR_DAILY_RATE * 100)}%를 포인트로 받아요.</div>
+          <div className="text-xs mt-1 lm-muted">현재 스폰서 1곳당 예상 일일 수익: <span className="lm-text-value font-semibold">{dailyPerSponsor.toLocaleString()} P</span></div>
+        </div>
+
+        {sponsors.length > 0 && (
+          <div className={`${panel} p-4 mb-4`}>
+            <div className="text-sm font-semibold mb-2">계약 중인 스폰서</div>
+            <div className="space-y-1.5">
+              {sponsors.map((s) => (
+                <div key={s.id} className="flex items-center justify-between text-xs">
+                  <span>{s.companyName}</span>
+                  <span className="lm-muted">{s.category}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={`${panel} p-4`}>
+          <div className="text-sm font-semibold mb-3">새 스폰서 카테고리 선택</div>
+          {sponsors.length >= maxSlots ? (
+            <div className="text-xs text-center py-4 lm-muted">
+              {maxSlots === 0 ? '구단 가치가 5,000 이상이 되면 스폰서 슬롯이 열려요.' : '남은 스폰서 슬롯이 없어요. 구단 가치를 더 키워보세요.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {categories.map((cat) => (
+                <button key={cat} onClick={() => handleSignSponsor(cat)} className="text-xs px-3 py-3 rounded-lg font-semibold lm-filter-tab transition-colors">
+                  {cat}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  function renderGuide() {
+    const Section = ({ title, children }) => (
+      <div className={`${panel} p-4 mb-3`}>
+        <div className="text-sm font-semibold mb-2" style={{ color: '#D9AE55' }}>{title}</div>
+        <div className="text-xs leading-relaxed space-y-1.5 lm-muted">{children}</div>
+      </div>
+    );
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <Header subtitle="게임 가이드" />
+        <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
+
+        <Section title="구단과 선수단">
+          <p>구단은 포지션(탑/정글/미드/원딜/서포터)마다 선수를 보유하며, 각 선수는 1군/2군 중 하나로 지정돼요. 1군/2군은 능력치와 무관한 "보직"일 뿐이며, 선수단 화면에서 배지를 탭해 언제든 바꿀 수 있어요.</p>
+          <p>홈 화면의 "팀파워"는 포지션별 1군 선수(없으면 최고 능력치 선수)의 OVR 합계예요.</p>
+        </Section>
+
+        <Section title="선수 영입">
+          <p>선수는 커먼(70%)/레어(22%)/에픽(8%) 등급 확률로 생성돼요. 등급이 높을수록 능력치가 좋지만 그만큼 드물게 나와요.</p>
+          <p>· 신인 발굴: 포인트로 뽑기(1회/5회)</p>
+          <p>· FA 시장: 포지션별로 매물을 보고 구매. 하루 최대 5회 새로고침 가능</p>
+        </Section>
+
+        <Section title="경기 방식">
+          <p>· 구단 스크림: 아무 구단과 단판(Bo1) 친선전. 1군/2군 중 선택해서 도전할 수 있어요.</p>
+          <p>· 지역 리그: 소속 지역 구단들과 라운드로빈(재대결 없음), 3판2선승. 상위 2위 안에 들면 국제 리그 자격을 얻어요.</p>
+          <p>· 국제 리그: 6개 지역 대표 8팀의 토너먼트(8강-4강-결승), 3판2선승.</p>
+          <p>경기 전 밴/픽 단계에서 챔피언을 직접 고르고, 챔피언끼리도 개별 상성이 있어요(능력치 차이가 크면 상성을 극복할 수 있어요).</p>
+        </Section>
+
+        <Section title="포인트 수입원">
+          <p>· 리그 참가 보상, 승리 보상, 최종 순위 보상 (지역리그/국제 리그)</p>
+          <p>· 스폰서 계약: 구단 가치 5,000당 슬롯 1개, 스폰서 1곳당 매일 구단 가치의 5%를 자동으로 받아요.</p>
+          <p>· FA선언한 선수가 팔렸을 때의 대금 (아래 참고)</p>
+        </Section>
+
+        <Section title="선수 방출 / FA선언">
+          <p>방출은 그냥 내보내는 것, FA선언은 파는 거예요. FA선언 시 가격은 선수의 책정금액(능력치 기반 가치)을 넘길 수 없어요.</p>
+          <p>· FA 시장으로 보내기: 내 FA 시장에 매물로 등록</p>
+          <p>· 코드로 팔기: 판매 코드를 만들어 다른 유저에게 전달, 그 유저가 "온라인 매칭" 화면에서 코드를 입력하면 구매돼요. 판매되면 "판매 대금 확인" 버튼으로 대금을 수령하세요.</p>
+        </Section>
+
+        <Section title="온라인 매칭">
+          <p>실시간 대전은 아니고, 초대 코드로 상대 구단의 스냅샷과 비동기로 스크림을 치르는 방식이에요. 같은 화면에서 선수 코드 거래도 할 수 있어요.</p>
+        </Section>
       </div>
     );
   }
@@ -1843,7 +2234,7 @@ export default function App() {
           </div>
         ) : (
           <div className={`${panel} p-4`}>
-            <div className="text-sm font-semibold mb-3">국제전 진출권 순위 (지역별 1위 6팀 + 와일드카드 2팀)</div>
+            <div className="text-sm font-semibold mb-3">국제 리그 진출권 순위 (지역별 1위 6팀 + 와일드카드 2팀)</div>
             <div className="space-y-1.5">
               {international.map((c, i) => (
                 <div key={i} className="flex items-center justify-between text-sm" style={{ borderBottom: i < international.length - 1 ? '1px solid #1D2740' : 'none', paddingBottom: 6, color: c.isUser ? '#D9AE55' : undefined }}>
@@ -1853,7 +2244,7 @@ export default function App() {
               ))}
             </div>
             {game.club.internationalResult && (
-              <div className="text-xs mt-3" style={{ color: '#2DD4C6' }}>지난 국제전 결과: {game.club.internationalResult}</div>
+              <div className="text-xs mt-3" style={{ color: '#2DD4C6' }}>지난 국제 리그 결과: {game.club.internationalResult}</div>
             )}
           </div>
         )}
@@ -1909,6 +2300,48 @@ export default function App() {
             <button onClick={handleJoinWithCode} className={`${btnPrimary} px-4 py-2 text-sm`}>참가</button>
           </div>
           {inviteCodeStatus && <div className="text-xs mt-2" style={{ color: '#F87171' }}>{inviteCodeStatus}</div>}
+        </div>
+
+        <div className={`${panel} p-4 mt-4`}>
+          <div className="text-sm font-semibold mb-2">선수 코드로 영입하기</div>
+          <div className="text-xs mb-3 lm-muted">다른 유저가 선수단에서 "특정 유저에게 코드로 팔기"로 만든 코드를 입력하면 그 선수를 바로 영입할 수 있어요.</div>
+          <div className="flex gap-2">
+            <input
+              value={playerCodeInput}
+              onChange={(e) => setPlayerCodeInput(e.target.value.toUpperCase())}
+              placeholder="선수 코드 입력"
+              maxLength={6}
+              className="lm-input rounded-lg px-3 py-2 text-sm flex-1 tracking-widest"
+            />
+            <button onClick={handleBuyPlayerCode} className={`${btnPrimary} px-4 py-2 text-sm`}>구매</button>
+          </div>
+          {playerCodeStatus && <div className="text-xs mt-2" style={{ color: '#2DD4C6' }}>{playerCodeStatus}</div>}
+        </div>
+
+        <div className={`${panel} p-4 mt-4`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-semibold">내가 코드로 등록한 선수</div>
+            <button onClick={handleCheckSaleCodes} className={`${btnGhost} px-3 py-1.5 text-xs`}>판매 대금 확인</button>
+          </div>
+          {lastCreatedSaleCode && (
+            <div className="text-center mb-3">
+              <div className="text-xs lm-muted mb-1">방금 만든 코드</div>
+              <div className="text-2xl font-bold tracking-widest" style={{ ...displayFont, color: '#D9AE55' }}>{lastCreatedSaleCode}</div>
+            </div>
+          )}
+          {saleCodeClaimMessage && <div className="text-xs mb-2 text-center" style={{ color: '#2DD4C6' }}>{saleCodeClaimMessage}</div>}
+          {(game.club.mySaleCodes || []).length === 0 ? (
+            <div className="text-xs lm-muted text-center">등록한 판매 코드가 없어요.</div>
+          ) : (
+            <div className="space-y-1.5">
+              {[...(game.club.mySaleCodes || [])].reverse().map((c, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <span className="lm-muted">{c.playerName} · {c.code}</span>
+                  <span style={{ color: c.claimed ? '#2DD4C6' : '#9AA6C7' }}>{c.claimed ? `판매완료 (${c.price.toLocaleString()}P 수령)` : '판매 대기중'}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1993,13 +2426,14 @@ export default function App() {
         </div>
 
         {/* FA 시장 */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1">
           <div className="text-sm font-semibold">FA 시장</div>
           <button onClick={handleRefreshMarket} className={`${btnGhost} px-3 py-1.5 text-xs flex items-center gap-1`}>
-            <RotateCcw size={12} /> 시장 새로고침
+            <RotateCcw size={12} /> 시장 새로고침 ({Math.max(0, FA_REFRESH_DAILY_LIMIT - (game.club.faRefreshDate === todayString(getOnlineNow()) ? (game.club.faRefreshCount || 0) : 0))}/{FA_REFRESH_DAILY_LIMIT} 남음)
           </button>
         </div>
-        <div className="flex flex-wrap gap-2 mb-4">
+        {faRefreshStatus && <div className="text-xs mb-2" style={{ color: '#F87171' }}>{faRefreshStatus}</div>}
+        <div className="flex flex-wrap gap-2 mb-4 mt-2">
           <button onClick={() => setFaPositionFilter('ALL')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${faPositionFilter === 'ALL' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>전체</button>
           {POSITIONS.map((pos) => (
             <button key={pos} onClick={() => setFaPositionFilter(pos)} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${faPositionFilter === pos ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>
@@ -2724,17 +3158,19 @@ export default function App() {
 
   function renderLeagueRosterSetup() {
     const canConfirm = POSITIONS.every((pos) => (entryPoolDraft[pos] || []).length > 0);
+    const leagueTier = (game.league && game.league.tier) || '1군';
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-8">
         <button onClick={handleCancelLeagueSetup} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 취소</button>
-        <Header subtitle={`${game.league ? game.league.roundLabel : ''} · 리그 로스터 등록`} />
+        <Header subtitle={`${game.league ? game.league.roundLabel : ''} · ${leagueTier} 로스터 등록`} />
         <div className={`${panel} p-4 mb-4`}>
           <div className="text-sm font-semibold mb-1">포지션별 엔트리 최대 2명 선택</div>
-          <div className="text-xs lm-muted">여기서 정한 로스터는 이번 리그 전체에 적용돼요. 경기마다 등록된 2명 중 출전 선수를 골라 번갈아 기용할 수 있어요.</div>
+          <div className="text-xs lm-muted">여기서 정한 로스터는 이번 리그 전체에 적용돼요. 경기마다 등록된 2명 중 출전 선수를 골라 번갈아 기용할 수 있어요. ({leagueTier} 참가이므로 기본적으로 {leagueTier} 선수가 후보로 표시돼요.)</div>
         </div>
         <div className="space-y-5">
           {POSITIONS.map((pos) => {
-            const candidates = game.players.filter((p) => p.position === pos);
+            const tierMatched = game.players.filter((p) => p.position === pos && p.tier === leagueTier);
+            const candidates = tierMatched.length > 0 ? tierMatched : game.players.filter((p) => p.position === pos);
             const pool = entryPoolDraft[pos] || [];
             return (
               <div key={pos}>
@@ -2848,7 +3284,7 @@ export default function App() {
 
         {intlChampion && (
           <div className={`${panel} p-6 text-center mb-4`}>
-            <div className="text-2xl font-bold mb-1" style={{ color: '#C89B3C' }}>국제전 우승!</div>
+            <div className="text-2xl font-bold mb-1" style={{ color: '#C89B3C' }}>국제 리그 우승!</div>
             <div className="text-sm lm-muted">모든 라운드를 제패했습니다.</div>
           </div>
         )}
@@ -2874,9 +3310,9 @@ export default function App() {
               ))}
             </div>
             {regionalRank <= 2 ? (
-              <div className="text-xs" style={{ color: '#2DD4C6' }}>국제전 진출 자격을 획득했습니다!</div>
+              <div className="text-xs" style={{ color: '#2DD4C6' }}>국제 리그 진출 자격을 획득했습니다!</div>
             ) : (
-              <div className="text-xs lm-muted">국제전 진출에는 상위 2위 안에 들어야 해요.</div>
+              <div className="text-xs lm-muted">국제 리그 진출에는 상위 2위 안에 들어야 해요.</div>
             )}
           </div>
         )}
@@ -2960,6 +3396,8 @@ export default function App() {
       {screen === 'matchHistory' && game && renderMatchHistory()}
       {screen === 'rankings' && game && renderRankings()}
       {screen === 'onlineMatch' && game && renderOnlineMatch()}
+      {screen === 'sponsors' && game && renderSponsors()}
+      {screen === 'guide' && game && renderGuide()}
       {screen === 'recruit' && game && renderRecruit()}
       {screen === 'matchSelect' && game && renderMatchSelect()}
       {screen === 'clubDetail' && game && viewingClub && viewingClubRosters && renderClubDetail()}
