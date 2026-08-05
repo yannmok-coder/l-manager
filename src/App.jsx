@@ -124,7 +124,7 @@ function buildRegionClubs(region, regionIndex) {
 }
 const REGION_CLUBS = {};
 REGIONS.forEach((r, idx) => { REGION_CLUBS[r] = buildRegionClubs(r, idx); });
-const KOREA_CLUB_NAMES = ['mT1', 'mBNK FEARX', 'mDplus Kia', 'mGen.G', 'mDN SOOPers', 'mKIWOOM DRX', 'mNonghim RedForce', 'mkt Rolster', 'mHANJIN BRION', 'mHanwha Life Esports'];
+const KOREA_CLUB_NAMES = ['mT1', 'mBNK FEARX', 'mDplus Kia', 'mGen.G', 'mDN SOOPers', 'mKIWOOM DRX', 'mNongshim RedForce', 'mkt Rolster', 'mHANJIN BRION', 'mHanwha Life Esports'];
 REGION_CLUBS['한국'] = KOREA_CLUB_NAMES.map((name, i) => ({ id: `한국-${i}`, name, region: '한국', power: 260 + i * 18 }));
 const CHINA_CLUB_NAMES = ['mBilibili Gaming', 'mTop Esports', "mAnyone's Legend", 'mJDG Esports', 'mInvictus Gaming', 'mWeibo Gaming', 'mNinjas in Pyjamas', 'mEdward Gaming', 'mTeam WE', 'mLGD Gaming', 'mUltra Prime', 'mThunder Talk Gaming', 'mLNG Esports', 'mOh My God'];
 REGION_CLUBS['중국'] = CHINA_CLUB_NAMES.map((name, i) => ({ id: `중국-${i}`, name, region: '중국', power: 250 + i * 13 }));
@@ -187,10 +187,12 @@ function balancedChance(userPower, aiPower, userScore, aiScore) {
   return clamp(raw - correction, 0.3, 0.7);
 }
 
+const PLAYER_NAME_POOL = [...PREFIXES, ...SUFFIXES];
+
 function generateName(usedSet) {
   let name, guard = 0;
   do {
-    name = PREFIXES[randRange(0, PREFIXES.length - 1)] + SUFFIXES[randRange(0, SUFFIXES.length - 1)];
+    name = PLAYER_NAME_POOL[randRange(0, PLAYER_NAME_POOL.length - 1)];
     guard++;
   } while (usedSet.has(name) && guard < 60);
   usedSet.add(name);
@@ -432,19 +434,84 @@ function powerTierLabel(power) {
   return '최강';
 }
 
-function generateOpponentLineup(power, tierLabel) {
+// 특정 AI 구단의 선수 이름을 등급별로 고정하고 싶을 때 사용 (포지션별)
+const CLUB_FIXED_ROSTER = {
+  'mGen.G': {
+    '1군': { TOP: 'mKiin', JGL: 'mCanyon', MID: 'mChovy', ADC: 'mRuler', SUP: 'mDuro' },
+    '2군': { TOP: 'mHorangE', JGL: 'mToye', MID: 'mDooly', ADC: 'mSlayer', SUP: 'mDahlia' },
+  },
+  'mKIWOOM DRX': {
+    '1군': { TOP: 'mRich', JGL: 'mVincenzo', MID: 'mUcal', ADC: 'mAiming', SUP: 'mAndil' },
+    '2군': { TOP: 'mFrog', JGL: 'mWiller', MID: 'mAKaJe', ADC: 'mLazyFeel', SUP: 'mMinous' },
+  },
+  'mkt Rolster': {
+    '1군': { TOP: 'mPerfecT', JGL: 'mCuzz', MID: 'mBdd', ADC: 'mJiwoo', SUP: 'mEffort' },
+    '2군': { TOP: 'mSero', JGL: 'mSylvie', MID: 'mHwichan', ADC: 'mFenRir', SUP: 'mPollu' },
+  },
+  'mBNK FEARX': {
+    '1군': { TOP: 'mClear', JGL: 'mRaptor', MID: 'mVicLa', ADC: 'mTaeyoon', SUP: 'mKellin' },
+    '2군': { TOP: 'mKangin', JGL: 'mZephyr', MID: 'mDaystar', ADC: 'mSlayer', SUP: 'mLuon' },
+  },
+  'mNongshim RedForce': {
+    '1군': { TOP: 'mKingen', JGL: 'mSponge', MID: 'mScout', ADC: 'mDiable', SUP: 'mLehends' },
+    '2군': { TOP: 'mJanus', JGL: 'mMihawk', MID: 'mCalix', ADC: 'mLucy', SUP: 'mPleata' },
+  },
+  'mHANJIN BRION': {
+    '1군': { TOP: 'mCasting', JGL: 'mGIDEON', MID: 'mRoamer', ADC: 'mTeddy', SUP: 'mNamgung' },
+    '2군': { TOP: 'mDDahyuk', JGL: 'mDinai', MID: 'mLoki', ADC: 'mOddEye', SUP: 'mPlanB' },
+  },
+  'mDplus Kia': {
+    '1군': { TOP: 'mSiwoo', JGL: 'mLucid', MID: 'mShowMaker', ADC: 'mSmash', SUP: 'mCarrer' },
+    '2군': { TOP: 'mJaehyuk', JGL: 'mSharvel', MID: 'mGarden', ADC: 'mWayne', SUP: 'mLoopy' },
+  },
+  'mDN SOOPers': {
+    '1군': { TOP: 'mDuDu', JGL: 'mPyosik', MID: 'mClozer', ADC: 'mdeokdam', SUP: 'mLife' },
+    '2군': { TOP: 'mLancer', JGL: 'mDDoiV', MID: 'mFlip', ADC: 'mEnosh', SUP: 'mPeter' },
+  },
+  'mHanwha Life Esports': {
+    '1군': { TOP: 'mZeus', JGL: 'mKanavi', MID: 'mZeka', ADC: 'mGumayusi', SUP: 'mDelight' },
+    '2군': { TOP: 'mPanther', JGL: 'mJackal', MID: 'mCracker', ADC: 'mPyeonsik', SUP: 'mBluffing' },
+  },
+  'mT1': {
+    '1군': { TOP: 'mDoran', JGL: 'mOner', MID: 'mFaker', ADC: 'mPeyz', SUP: 'mKeria' },
+    '2군': { TOP: 'mHaetae', JGL: 'mPinter', MID: 'mGuti', ADC: 'mCypher', SUP: 'mCloud' },
+  },
+  'mG2 Esports': {
+    '1군': { TOP: 'mBrokenBlade', JGL: 'mSkewMond', MID: 'mCaps', ADC: 'mHans Sama', SUP: 'mLabrov' },
+  },
+  'mBilibili Gaming': {
+    '1군': { TOP: 'mWenbo', JGL: 'mXun', MID: 'mKnight', ADC: 'mViper', SUP: 'mON' },
+  },
+  'mJDG Esports': {
+    '1군': { TOP: 'mXiaoxu', JGL: 'mJunJia', MID: 'mHongQ', ADC: 'mGALA', SUP: 'mVampire' },
+  },
+  'mTop Esports': {
+    '1군': { TOP: 'm369', JGL: 'mTian', MID: 'mCreme', ADC: 'mJackeyLove', SUP: 'mZhuo' },
+  },
+  'mWeibo Gaming': {
+    '1군': { TOP: 'mZika', MID: 'mXiaohu', ADC: 'mElk', SUP: 'mJwei' },
+  },
+  "mAnyone's Legend": {
+    '1군': { TOP: 'mBreathe', JGL: 'mTarzan', MID: 'mShanks', ADC: 'mHope', SUP: 'mKael' },
+  },
+};
+
+function generateOpponentLineup(power, tierLabel, clubName) {
   const used = new Set();
   const idRef = { current: randRange(9000, 98000) };
   const per = power / 5;
+  const tier = tierLabel || '1군';
+  const fixedRoster = clubName && CLUB_FIXED_ROSTER[clubName] && CLUB_FIXED_ROSTER[clubName][tier];
   return POSITIONS.map((pos) => {
     const target = clamp(Math.round(per + randRange(-6, 6)), 20, 99);
     const spread = () => clamp(target + randRange(-8, 8), 10, 99);
     const mechanics = spread(), gameSense = spread(), teamfight = spread(), laning = spread();
     const overall = Math.round((mechanics + gameSense + teamfight + laning) / 4);
+    const name = (fixedRoster && fixedRoster[pos]) || generateName(used);
     return {
       id: idRef.current++,
-      name: generateName(used),
-      position: pos, tier: tierLabel || '1군',
+      name,
+      position: pos, tier,
       mechanics, gameSense, teamfight, laning, overall,
       champion: null, kills: 0, deaths: 0, assists: 0, damage: 0,
     };
@@ -1229,15 +1296,15 @@ export default function App() {
     const power = chosenTier === '2군' ? (opp.power2 || Math.round(opp.power * 0.7)) : opp.power;
     const oppWithTier = { ...opp, name: `${opp.name} ${chosenTier}`, baseName: opp.name, challengeTier: chosenTier };
     setSelectedOpponent(oppWithTier);
-    setOpponentLineup(generateOpponentLineup(power, chosenTier));
+    setOpponentLineup(generateOpponentLineup(power, chosenTier, opp.name));
     setLineupChoice(POSITIONS.reduce((acc, p) => ({ ...acc, [p]: '1군' }), {}));
     setExpandedChallengeId(null);
     setScreen('lineup');
   }
 
   function handleViewClubDetail(club) {
-    const roster1 = generateOpponentLineup(club.power, '1군');
-    const roster2 = generateOpponentLineup(club.power2 || Math.round(club.power * 0.7), '2군');
+    const roster1 = generateOpponentLineup(club.power, '1군', club.name);
+    const roster2 = generateOpponentLineup(club.power2 || Math.round(club.power * 0.7), '2군', club.name);
     setViewingClub(club);
     setViewingClubRosters({ tier1: roster1, tier2: roster2 });
     setClubDetailTier('1군');
@@ -1257,7 +1324,8 @@ export default function App() {
       return { id: p.id, name: p.name, position: pos, overall: p.overall, champion: null, kills: 0, deaths: 0, assists: 0 };
     });
     setSelectedOpponent(clubDef);
-    setOpponentLineup(generateOpponentLineup(clubDef.power));
+    const oppPower = baseLeague.tier === '2군' ? (clubDef.power2 || Math.round(clubDef.power * 0.7)) : clubDef.power;
+    setOpponentLineup(generateOpponentLineup(oppPower, baseLeague.tier, clubDef.name));
     const newLeague = { ...baseLeague, started: true, current: { opponent: clubDef, userWins: 0, aiWins: 0, gameNumber: 1, activeStarters } };
     setGame((prev) => {
       const newGame = { ...prev, league: newLeague };
@@ -1381,7 +1449,8 @@ export default function App() {
     if (!league) return;
     if (league.current) {
       setSelectedOpponent(league.current.opponent);
-      setOpponentLineup(generateOpponentLineup(league.current.opponent.power));
+      const oppPower = league.tier === '2군' ? (league.current.opponent.power2 || Math.round(league.current.opponent.power * 0.7)) : league.current.opponent.power;
+      setOpponentLineup(generateOpponentLineup(oppPower, league.tier, league.current.opponent.name));
       const lineup = POSITIONS.map((pos) => {
         const p = game.players.find((pl) => pl.id === league.current.activeStarters[pos]);
         return { id: p.id, name: p.name, position: pos, overall: p.overall, champion: null, kills: 0, deaths: 0, assists: 0 };
