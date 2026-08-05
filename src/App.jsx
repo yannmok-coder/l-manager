@@ -88,7 +88,7 @@ const OPPONENTS = [
 ];
 
 const DRAGON_TYPES = ['화염', '바다', '대지', '바람', '마법'];
-const APP_VERSION = 'v.0.020';
+const APP_VERSION = 'v.0.021';
 const SINGLE_PULL_COST = 500;
 const MULTI_PULL_COUNT = 5;
 const MULTI_PULL_COST = 2250;
@@ -957,6 +957,7 @@ export default function App() {
   const [userLineup, setUserLineup] = useState(null);
   const [draft, setDraft] = useState(null);
   const [champFilter, setChampFilter] = useState('ALL');
+  const [guideChampFilter, setGuideChampFilter] = useState('ALL');
   const [champAssignment, setChampAssignment] = useState({});
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [entryPoolDraft, setEntryPoolDraft] = useState({});
@@ -1002,6 +1003,7 @@ export default function App() {
   const [draftIntroCountdown, setDraftIntroCountdown] = useState(5);
 
   const usedNamesRef = useRef(new Set());
+  const waitCompletedRef = useRef(false);
   const idRef = useRef(1);
 
   // 기기 자체 시간이 아닌 온라인(네트워크) 시간을 기준으로 삼기 위한 동기화.
@@ -1815,15 +1817,6 @@ export default function App() {
   }, [screen]);
 
   useEffect(() => {
-    if (screen !== 'gameWait') return;
-    setWaitCountdown(GAME_WAIT_SECONDS);
-    const interval = setInterval(() => {
-      setWaitCountdown((t) => (t > 0 ? t - 1 : 0));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [screen]);
-
-  useEffect(() => {
     if (screen !== 'draftIntro') return;
     setDraftIntroCountdown(5);
     const interval = setInterval(() => {
@@ -1838,19 +1831,35 @@ export default function App() {
     }
   }, [draftIntroCountdown, screen]);
 
-  useEffect(() => {
-    if (screen === 'gameWait' && waitCountdown === 0) {
-      if (game.league && game.league.current && game.league.current.activeStarters) {
-        const lineup = POSITIONS.map((pos) => {
-          const pid = game.league.current.activeStarters[pos];
-          const p = game.players.find((pl) => pl.id === pid);
-          return { id: p.id, name: p.name, position: pos, overall: p.overall, champion: null, kills: 0, deaths: 0, assists: 0 };
-        });
-        setUserLineup(lineup);
-      }
-      startDraftPhase();
+  function handleWaitComplete() {
+    if (waitCompletedRef.current) return;
+    waitCompletedRef.current = true;
+    if (game.league && game.league.current && game.league.current.activeStarters) {
+      const lineup = POSITIONS.map((pos) => {
+        const pid = game.league.current.activeStarters[pos];
+        const p = game.players.find((pl) => pl.id === pid);
+        return { id: p.id, name: p.name, position: pos, overall: p.overall, champion: null, kills: 0, deaths: 0, assists: 0 };
+      });
+      setUserLineup(lineup);
     }
-  }, [waitCountdown, screen]);
+    startDraftPhase();
+  }
+
+  useEffect(() => {
+    if (screen !== 'gameWait') return;
+    waitCompletedRef.current = false;
+    setWaitCountdown(GAME_WAIT_SECONDS);
+    const interval = setInterval(() => {
+      setWaitCountdown((t) => {
+        if (t <= 1) {
+          if (!waitCompletedRef.current) setTimeout(() => handleWaitComplete(), 0);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [screen]);
 
   function finalizeMatch() {
     const wasWin = sim.finalWin;
@@ -2417,6 +2426,46 @@ export default function App() {
         <Section title="온라인 매칭">
           <p>실시간 대전은 아니고, 초대 코드로 상대 구단의 스냅샷과 비동기로 스크림을 치르는 방식이에요. 같은 화면에서 선수 코드 거래도 할 수 있어요.</p>
         </Section>
+
+        <button onClick={() => setScreen('championList')} className={`${panel} lm-panel-hover w-full p-4 text-left transition-colors flex items-center justify-between`}>
+          <span className="text-sm font-semibold">챔피언 리스트 보기</span>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  function renderChampionList() {
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8">
+        <Header subtitle="챔피언 리스트" />
+        <button onClick={() => setScreen('guide')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 가이드로</button>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button onClick={() => setGuideChampFilter('ALL')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${guideChampFilter === 'ALL' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>전체</button>
+          {POSITIONS.map((pos) => (
+            <button key={pos} onClick={() => setGuideChampFilter(pos)} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${guideChampFilter === pos ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>
+              {POS_LABEL[pos]}
+            </button>
+          ))}
+        </div>
+
+        <div className="text-xs mb-3 lm-muted">총 {ALL_CHAMPIONS_FLAT.filter((c) => guideChampFilter === 'ALL' || c.role === guideChampFilter).length}명</div>
+
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {ALL_CHAMPIONS_FLAT.filter((c) => guideChampFilter === 'ALL' || c.role === guideChampFilter).map(({ name, role }) => (
+            <div key={name} className={`${panel} p-2 flex flex-col items-center gap-1`}>
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0"
+                style={{ background: `linear-gradient(135deg, ${POS_COLOR[role]}, #0A0E17)`, border: `1px solid ${POS_COLOR[role]}` }}
+              >
+                {CHAMPION_WEAPON[name] || '❔'}
+              </div>
+              <div className="text-xs text-center truncate w-full">{name}</div>
+              <PosBadge position={role} />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -2950,7 +2999,7 @@ export default function App() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <div className={`${panel} p-3`}>
             <div className="text-xs mb-2 lm-muted">우리 팀</div>
             <div className="mb-2">
@@ -3401,7 +3450,7 @@ export default function App() {
           </div>
         )}
 
-        <button onClick={() => setWaitCountdown(0)} className={`${btnPrimary} w-full py-3 mt-6 text-sm`}>준비완료 (바로 시작)</button>
+        <button onClick={handleWaitComplete} className={`${btnPrimary} w-full py-3 mt-6 text-sm`}>준비완료 (바로 시작)</button>
       </div>
     );
   }
@@ -3648,6 +3697,7 @@ export default function App() {
       {screen === 'onlineMatch' && game && renderOnlineMatch()}
       {screen === 'sponsors' && game && renderSponsors()}
       {screen === 'guide' && game && renderGuide()}
+      {screen === 'championList' && game && renderChampionList()}
       {screen === 'recruit' && game && renderRecruit()}
       {screen === 'matchSelect' && game && renderMatchSelect()}
       {screen === 'clubDetail' && game && viewingClub && viewingClubRosters && renderClubDetail()}
