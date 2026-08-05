@@ -88,6 +88,7 @@ const OPPONENTS = [
 ];
 
 const DRAGON_TYPES = ['화염', '바다', '대지', '바람', '마법'];
+const APP_VERSION = 'v.0.018';
 const SINGLE_PULL_COST = 500;
 const MULTI_PULL_COUNT = 5;
 const MULTI_PULL_COST = 2250;
@@ -2150,6 +2151,7 @@ export default function App() {
         <button onClick={handleReset} className="mt-8 text-xs flex items-center gap-1 lm-dim lm-hover-muted">
           <RotateCcw size={12} /> 구단 초기화하고 새로 시작
         </button>
+        <div className="mt-4 text-xs text-center lm-dim">{APP_VERSION}</div>
         {leagueStartConfirm && (
           <div className="fixed inset-0 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.6)', zIndex: 50 }}>
             <div className={`${panel} p-6 max-w-sm w-full text-center`}>
