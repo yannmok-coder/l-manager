@@ -402,63 +402,46 @@ function resolveWinner(a, b) {
 
 // 국제 리그 진출권 순위 조회용 (실제 대진 없이 참가 자격만 계산)
 function getInternationalQualifiers(game) {
-  const regionFirsts = [];
-  const regionSeconds = [];
-  REGIONS.forEach((region) => {
-    const aiSorted = [...REGION_CLUBS[region]].sort((a, b) => b.power - a.power);
-    regionFirsts.push({ ...aiSorted[0], region });
-    regionSeconds.push({ ...aiSorted[1], region });
-  });
-  const userRegionIdx = REGIONS.indexOf(game.club.region);
-  const userQualified = userRegionIdx !== -1 && game.club.qualifiedRank && game.club.qualifiedRank <= 2;
-  if (userQualified) {
-    const userEntry = { id: 'USER', name: game.club.name, region: game.club.region, power: (game.club.qualifiedWins || 5) * 40, isUser: true };
-    if (game.club.qualifiedRank === 1) regionFirsts[userRegionIdx] = userEntry;
-    else regionSeconds[userRegionIdx] = userEntry;
-  }
-  const userInSeconds = regionSeconds.find((c) => c.isUser);
-  let wildcards;
-  if (userInSeconds) {
-    const rest = regionSeconds.filter((c) => !c.isUser).sort((a, b) => b.power - a.power);
-    wildcards = [userInSeconds, rest[0]];
-  } else {
-    wildcards = [...regionSeconds].sort((a, b) => b.power - a.power).slice(0, 2);
-  }
-  return [...regionFirsts, ...wildcards].sort((a, b) => b.power - a.power);
+  const { byeTeams, playInTeams } = getIntlByeAndPlayIn(game);
+  return [...byeTeams, ...playInTeams].sort((a, b) => b.power - a.power);
 }
 
-function setupInternationalBracket(game) {
-  const regionFirsts = [];
-  const regionSeconds = [];
+// 지역별 국제전 참가 구단 수 (총 10팀: 부전승 6 + 플레이인 4)
+const INTL_SLOTS = {
+  '한국': 2, '중국': 2, '유럽/중동/아프리카': 2, '아시아/오세아니아': 1, '아메리카/카브리해': 2, '남아메리카': 1,
+};
+
+function getIntlByeAndPlayIn(game) {
+  const byeTeams = [];
+  const playInTeams = [];
   REGIONS.forEach((region) => {
+    const slots = INTL_SLOTS[region] || 0;
+    if (slots === 0) return;
     const aiSorted = [...REGION_CLUBS[region]].sort((a, b) => b.power - a.power);
-    regionFirsts.push({ ...aiSorted[0], region });
-    regionSeconds.push({ ...aiSorted[1], region });
+    const top = aiSorted.slice(0, slots).map((c) => ({ ...c, region }));
+    if (region === game.club.region && game.club.qualifiedRank && game.club.qualifiedRank <= slots) {
+      top[game.club.qualifiedRank - 1] = { id: 'USER', name: game.club.name, region, power: (game.club.qualifiedWins || 5) * 40, isUser: true };
+    }
+    if (slots >= 2) {
+      byeTeams.push(top[0]);
+      playInTeams.push(top[1]);
+    } else {
+      byeTeams.push(top[0]);
+    }
   });
-  const userRegionIdx = REGIONS.indexOf(game.club.region);
-  const userQualified = userRegionIdx !== -1 && game.club.qualifiedRank && game.club.qualifiedRank <= 2;
-  if (userQualified) {
-    const userEntry = { id: 'USER', name: game.club.name, region: game.club.region, power: (game.club.qualifiedWins || 5) * 40, isUser: true };
-    if (game.club.qualifiedRank === 1) regionFirsts[userRegionIdx] = userEntry;
-    else regionSeconds[userRegionIdx] = userEntry;
-  }
-  const userInSeconds = regionSeconds.find((c) => c.isUser);
-  let wildcards;
-  if (userInSeconds) {
-    const rest = regionSeconds.filter((c) => !c.isUser).sort((a, b) => b.power - a.power);
-    wildcards = [userInSeconds, rest[0]];
-  } else {
-    wildcards = [...regionSeconds].sort((a, b) => b.power - a.power).slice(0, 2);
-  }
-  // 지역 1위 6팀 + 와일드카드(지역 2위 중 상위) 2팀 = 총 8팀
-  const participants = [...regionFirsts, ...wildcards];
+  return { byeTeams, playInTeams };
+}
+
+// 부전승 6팀 + 플레이인 승자 2팀 = 8팀으로 8강 대진을 짜고, 유저 기준 다음 상대들을 미리 계산해둔다
+function buildQuarterBracket(eight) {
+  const participants = [...eight];
   for (let i = participants.length - 1; i > 0; i--) {
     const j = randRange(0, i);
     [participants[i], participants[j]] = [participants[j], participants[i]];
   }
   const pairsR1 = [[0, 3], [2, 1], [4, 7], [6, 5]];
   const userIndex = participants.findIndex((p) => p.isUser);
-  if (userIndex === -1) return { userOpponent: null };
+  if (userIndex === -1) return null;
   const r1Winners = new Array(4);
   let userOpponent = null;
   pairsR1.forEach(([ia, ib], pairIdx) => {
@@ -483,6 +466,34 @@ function setupInternationalBracket(game) {
     otherHalfFinalist = resolveWinner(r1Winners[0], r1Winners[1]);
   }
   return { userOpponent, semiOtherPairWinner, otherHalfFinalist };
+}
+
+function setupInternationalBracket(game) {
+  const { byeTeams, playInTeams } = getIntlByeAndPlayIn(game);
+  const shuffledPlayIn = [...playInTeams];
+  for (let i = shuffledPlayIn.length - 1; i > 0; i--) {
+    const j = randRange(0, i);
+    [shuffledPlayIn[i], shuffledPlayIn[j]] = [shuffledPlayIn[j], shuffledPlayIn[i]];
+  }
+  const userPlayInIndex = shuffledPlayIn.findIndex((p) => p.isUser);
+  if (userPlayInIndex !== -1) {
+    // 유저가 2번 시드(플레이인)로 진출한 경우: 플레이인부터 시작
+    const opponentIdx = userPlayInIndex % 2 === 0 ? userPlayInIndex + 1 : userPlayInIndex - 1;
+    const userOpponent = shuffledPlayIn[opponentIdx];
+    const otherIdxA = userPlayInIndex < 2 ? 2 : 0;
+    const otherIdxB = userPlayInIndex < 2 ? 3 : 1;
+    const otherPlayInWinner = resolveWinner(shuffledPlayIn[otherIdxA], shuffledPlayIn[otherIdxB]);
+    return { stage: 'playin', userOpponent, otherPlayInWinner, byeTeams };
+  }
+  // 유저가 부전승(1번 시드)인 경우: 플레이인 결과 2개를 먼저 해결하고 8강부터 시작
+  const playInWinners = [
+    resolveWinner(shuffledPlayIn[0], shuffledPlayIn[1]),
+    resolveWinner(shuffledPlayIn[2], shuffledPlayIn[3]),
+  ];
+  const eight = [...byeTeams, ...playInWinners];
+  const bracket = buildQuarterBracket(eight);
+  if (!bracket) return { userOpponent: null };
+  return { stage: 'quarter', ...bracket };
 }
 
 const CHAMPION_WEAPON = {
@@ -1647,11 +1658,17 @@ export default function App() {
   function handleStartInternational(tier) {
     const bracket = setupInternationalBracket(game);
     if (!bracket.userOpponent) return;
-    const league = {
-      type: 'international', tier: tier || '1군', region: game.club.region, queue: [bracket.userOpponent], results: [], current: null, entryPool: null, started: false,
-      roundIndex: 0, roundLabel: '8강',
-      shadow: { semiOpponent: bracket.semiOtherPairWinner, finalOpponent: bracket.otherHalfFinalist },
-    };
+    const league = bracket.stage === 'playin'
+      ? {
+          type: 'international', tier: tier || '1군', region: game.club.region, queue: [bracket.userOpponent], results: [], current: null, entryPool: null, started: false,
+          roundIndex: -1, roundLabel: '플레이인',
+          shadow: { otherPlayInWinner: bracket.otherPlayInWinner, byeTeams: bracket.byeTeams },
+        }
+      : {
+          type: 'international', tier: tier || '1군', region: game.club.region, queue: [bracket.userOpponent], results: [], current: null, entryPool: null, started: false,
+          roundIndex: 0, roundLabel: '8강',
+          shadow: { semiOpponent: bracket.semiOtherPairWinner, finalOpponent: bracket.otherHalfFinalist },
+        };
     setGame((prev) => {
       const newGame = { ...prev, league };
       saveGame(newGame);
@@ -1684,6 +1701,14 @@ export default function App() {
       const next = queue.shift();
       if (!next) return;
       handleChallengeClub(next, { ...league, queue, current: null });
+    } else if (league.roundIndex === -1) {
+      // 플레이인 승리 → 부전승 6팀 + 나머지 플레이인 승자와 함께 8강 대진 구성
+      const userEntry = { id: 'USER', name: game.club.name, region: game.club.region, power: (game.club.qualifiedWins || 5) * 40, isUser: true };
+      const eight = [...league.shadow.byeTeams, league.shadow.otherPlayInWinner, userEntry];
+      const bracket = buildQuarterBracket(eight);
+      if (!bracket || !bracket.userOpponent) return;
+      const newShadow = { semiOpponent: bracket.semiOtherPairWinner, finalOpponent: bracket.otherHalfFinalist };
+      handleChallengeClub(bracket.userOpponent, { ...league, roundIndex: 0, roundLabel: '8강', shadow: newShadow, current: null });
     } else {
       const nextOpp = league.roundIndex === 0 ? league.shadow.semiOpponent : league.shadow.finalOpponent;
       if (!nextOpp) return;
@@ -1766,6 +1791,7 @@ export default function App() {
       else if (!wonLast && league.roundIndex === 2) placement = '준우승';
       else if (!wonLast && league.roundIndex === 1) placement = '4강';
       else if (!wonLast && league.roundIndex === 0) placement = '8강';
+      else if (!wonLast && league.roundIndex === -1) placement = '플레이인 탈락';
       const rankReward = Math.round((placement === '우승' ? INTERNATIONAL_REWARD.rank1 : placement === '준우승' ? INTERNATIONAL_REWARD.rank2 : placement === '4강' ? INTERNATIONAL_REWARD.rank3 : 0) * tierMult);
       const achField = placement === '우승' ? 'internationalWins' : placement === '준우승' ? 'internationalRunnerUps' : null;
       setGame((prev) => {
@@ -2300,7 +2326,8 @@ export default function App() {
           {(() => {
             const regionalActive = game.league && game.league.type === 'regional';
             const intlActive = game.league && game.league.type === 'international';
-            const canJoinIntl = !game.league && game.club.qualifiedRank && game.club.qualifiedRank <= 2;
+            const mySlots = INTL_SLOTS[game.club.region] || 2;
+            const canJoinIntl = !game.league && game.club.qualifiedRank && game.club.qualifiedRank <= mySlots;
             return (
               <>
                 <button
@@ -2330,7 +2357,7 @@ export default function App() {
                   >
                     <Trophy size={26} color="#C89B3C" className="mb-2" />
                     <div className="font-bold text-lg">국제 리그</div>
-                    <div className="text-xs mt-1 lm-muted">{canJoinIntl ? '8개 구단 토너먼트 참가 가능' : '지역 리그 상위 2위 안에 들어야 참가 가능'}</div>
+                    <div className="text-xs mt-1 lm-muted">{canJoinIntl ? '10개 구단 토너먼트 참가 가능' : `지역 리그 상위 ${mySlots}위 안에 들어야 참가 가능`}</div>
                   </button>
                 )}
               </>
@@ -2755,7 +2782,7 @@ export default function App() {
         <Section title="경기 방식">
           <p>· 구단 스크림: 아무 구단과 단판(Bo1) 친선전. 1군/2군 중 선택해서 도전할 수 있어요.</p>
           <p>· 지역 리그: 소속 지역 구단들과 라운드로빈(재대결 없음), 3판2선승. 상위 2위 안에 들면 국제 리그 자격을 얻어요.</p>
-          <p>· 국제 리그: 6개 지역 대표 8팀의 토너먼트(8강-4강-결승), 3판2선승.</p>
+          <p>· 국제 리그: 6개 지역 대표 10개 구단의 토너먼트. 지역별로 1~2팀이 참가하고(한국·중국·유럽·아메리카 2팀, 아시아·남아메리카 1팀), 2번 시드 4팀은 플레이인을 먼저 치른 뒤 나머지 6팀과 8강부터 합류해요. 이후 8강-4강-결승, 3판2선승.</p>
           <p>경기 전 밴/픽 단계에서 챔피언을 직접 고르고, 챔피언끼리도 개별 상성이 있어요(능력치 차이가 크면 상성을 극복할 수 있어요).</p>
         </Section>
 
@@ -2894,7 +2921,7 @@ export default function App() {
           </div>
         ) : (
           <div className={`${panel} p-4`}>
-            <div className="text-sm font-semibold mb-3">국제 리그 진출권 순위 (지역별 1위 6팀 + 와일드카드 2팀)</div>
+            <div className="text-sm font-semibold mb-3">국제 리그 진출권 순위 (한국·중국·유럽·아메리카 2팀, 아시아·남아메리카 1팀 = 총 10팀)</div>
             <div className="space-y-1.5">
               {international.map((c, i) => (
                 <div key={i} className="flex items-center justify-between text-sm" style={{ borderBottom: i < international.length - 1 ? '1px solid #1D2740' : 'none', paddingBottom: 6, color: c.isUser ? '#D9AE55' : undefined }}>
@@ -4080,7 +4107,7 @@ export default function App() {
     const r = lastResult;
     const league = game.league;
     let regionalComplete = false, regionalStandings = null, regionalRank = null;
-    let intlNextOpponent = null, intlChampion = false, intlEliminated = false;
+    let intlNextOpponent = null, intlChampion = false, intlEliminated = false, intlAdvancing = false;
 
     if (league && league.type === 'regional') {
       if (league.queue.length === 0) {
@@ -4098,7 +4125,8 @@ export default function App() {
       } else if (league.roundIndex >= 2) {
         intlChampion = true;
       } else {
-        intlNextOpponent = league.roundIndex === 0 ? league.shadow.semiOpponent : league.shadow.finalOpponent;
+        intlAdvancing = true;
+        if (league.roundIndex >= 0) intlNextOpponent = league.roundIndex === 0 ? league.shadow.semiOpponent : league.shadow.finalOpponent;
       }
     }
     const isLeagueOver = regionalComplete || intlChampion || intlEliminated;
@@ -4125,6 +4153,11 @@ export default function App() {
           <div className={`${panel} p-4 mb-4`}>
             <div className="text-sm mb-1 lm-muted">다음 라운드 상대</div>
             <div className="font-bold">{intlNextOpponent.name} ({intlNextOpponent.region})</div>
+          </div>
+        )}
+        {intlAdvancing && !intlNextOpponent && (
+          <div className={`${panel} p-4 mb-4`}>
+            <div className="text-sm font-bold" style={{ color: '#2DD4C6' }}>플레이인을 통과했습니다! 8강 대진은 계속하기를 누르면 정해져요.</div>
           </div>
         )}
         {regionalComplete && (
@@ -4162,7 +4195,7 @@ export default function App() {
           {!isLeagueOver && league && league.type === 'regional' && (
             <button onClick={handleContinueLeague} className={`${btnPrimary} flex-1 py-3 text-sm`}>다음 경기 이어하기</button>
           )}
-          {intlNextOpponent && (
+          {intlAdvancing && (
             <button onClick={handleContinueLeague} className={`${btnPrimary} flex-1 py-3 text-sm`}>다음 라운드 이어하기</button>
           )}
         </div>
