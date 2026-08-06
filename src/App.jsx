@@ -532,6 +532,135 @@ const CHAMPION_WEAPON = {
   '잔나': '🌪️', '탐 켄치': '👅', '블리츠크랭크': '🤖', '레나타 글라스크': '⛓️', '소라카': '🌟',
 };
 
+// 배포판 전용: 챔피언별 고유 아이콘 이미지 (public/champion-icons/)
+const CHAMPION_ICON = {
+  '가렌': '/champion-icons/champ-가렌.png',
+  '다리우스': '/champion-icons/champ-다리우스.png',
+  '카밀': '/champion-icons/champ-카밀.png',
+  '레넥톤': '/champion-icons/champ-레넥톤.png',
+  '오른': '/champion-icons/champ-오른.png',
+  '피오라': '/champion-icons/champ-피오라.png',
+  '나서스': '/champion-icons/champ-나서스.png',
+  '잭스': '/champion-icons/champ-잭스.png',
+  '세트': '/champion-icons/champ-세트.png',
+  '아트록스': '/champion-icons/champ-아트록스.png',
+  '쉔': '/champion-icons/champ-쉔.png',
+  '말파이트': '/champion-icons/champ-말파이트.png',
+  '우디르': '/champion-icons/champ-우디르.png',
+  '볼리베어': '/champion-icons/champ-볼리베어.png',
+  '케넨': '/champion-icons/champ-케넨.png',
+  '신지드': '/champion-icons/champ-신지드.png',
+  '초가스': '/champion-icons/champ-초가스.png',
+  '트린다미어': '/champion-icons/champ-트린다미어.png',
+  '이렐리아': '/champion-icons/champ-이렐리아.png',
+  '럼블': '/champion-icons/champ-럼블.png',
+  '그웬': '/champion-icons/champ-그웬.png',
+  '크산테': '/champion-icons/champ-크산테.png',
+  '사이온': '/champion-icons/champ-사이온.png',
+  '퀸': '/champion-icons/champ-퀸.png',
+  '뽀삐': '/champion-icons/champ-뽀삐.png',
+  '리 신': '/champion-icons/champ-리-신.png',
+  '비에고': '/champion-icons/champ-비에고.png',
+  '자르반 4세': '/champion-icons/champ-자르반-4세.png',
+  '다이애나': '/champion-icons/champ-다이애나.png',
+  '세주아니': '/champion-icons/champ-세주아니.png',
+  '그레이브즈': '/champion-icons/champ-그레이브즈.png',
+  '니달리': '/champion-icons/champ-니달리.png',
+  '킨드레드': '/champion-icons/champ-킨드레드.png',
+  '헤카림': '/champion-icons/champ-헤카림.png',
+  '릴리아': '/champion-icons/champ-릴리아.png',
+  '엘리스': '/champion-icons/champ-엘리스.png',
+  '카직스': '/champion-icons/champ-카직스.png',
+  '렝가': '/champion-icons/champ-렝가.png',
+  '노커': '/champion-icons/champ-노커.png',
+  '워윅': '/champion-icons/champ-워윅.png',
+  '아무무': '/champion-icons/champ-아무무.png',
+  '자크': '/champion-icons/champ-자크.png',
+  '벨베스': '/champion-icons/champ-벨베스.png',
+  '판테온': '/champion-icons/champ-판테온.png',
+  '문도 박사': '/champion-icons/champ-문도-박사.png',
+  '마스터 이': '/champion-icons/champ-마스터-이.png',
+  '오공': '/champion-icons/champ-오공.png',
+  '나피리': '/champion-icons/champ-나피리.png',
+  '이블린': '/champion-icons/champ-이블린.png',
+  '신짜오': '/champion-icons/champ-신짜오.png',
+  '아리': '/champion-icons/champ-아리.png',
+  '제드': '/champion-icons/champ-제드.png',
+  '야스오': '/champion-icons/champ-야스오.png',
+  '오리아나': '/champion-icons/champ-오리아나.png',
+  '신드라': '/champion-icons/champ-신드라.png',
+  '르블랑': '/champion-icons/champ-르블랑.png',
+  '아칼리': '/champion-icons/champ-아칼리.png',
+  '빅토르': '/champion-icons/champ-빅토르.png',
+  '탈리야': '/champion-icons/champ-탈리야.png',
+  '카시오페아': '/champion-icons/champ-카시오페아.png',
+  '트위스티드 페이트': '/champion-icons/champ-트위스티드-페이트.png',
+  '라이즈': '/champion-icons/champ-라이즈.png',
+  '벡스': '/champion-icons/champ-벡스.png',
+  '조이': '/champion-icons/champ-조이.png',
+  '카타리나': '/champion-icons/champ-카타리나.png',
+  '베이가': '/champion-icons/champ-베이가.png',
+  '직스': '/champion-icons/champ-직스.png',
+  '코르키': '/champion-icons/champ-코르키.png',
+  '피즈': '/champion-icons/champ-피즈.png',
+  '갈리오': '/champion-icons/champ-갈리오.png',
+  '아지르': '/champion-icons/champ-아지르.png',
+  '럭스': '/champion-icons/champ-럭스.png',
+  '아우렐리온 솔': '/champion-icons/champ-아우렐리온-솔.png',
+  '카사딘': '/champion-icons/champ-카사딘.png',
+  '하이머딩거': '/champion-icons/champ-하이머딩거.png',
+  '징크스': '/champion-icons/champ-징크스.png',
+  '케이틀린': '/champion-icons/champ-케이틀린.png',
+  '이즈리얼': '/champion-icons/champ-이즈리얼.png',
+  '카이사': '/champion-icons/champ-카이사.png',
+  '베인': '/champion-icons/champ-베인.png',
+  '진': '/champion-icons/champ-진.png',
+  '애쉬': '/champion-icons/champ-애쉬.png',
+  '루시안': '/champion-icons/champ-루시안.png',
+  '시비르': '/champion-icons/champ-시비르.png',
+  '자야': '/champion-icons/champ-자야.png',
+  '트리스타나': '/champion-icons/champ-트리스타나.png',
+  '바루스': '/champion-icons/champ-바루스.png',
+  '미스 포츈': '/champion-icons/champ-미스-포츈.png',
+  '드레이븐': '/champion-icons/champ-드레이븐.png',
+  '칼리스타': '/champion-icons/champ-칼리스타.png',
+  '아펠리오스': '/champion-icons/champ-아펠리오스.png',
+  '사미라': '/champion-icons/champ-사미라.png',
+  '자히리': '/champion-icons/champ-자히리.png',
+  '세나': '/champion-icons/champ-세나.png',
+  '니코': '/champion-icons/champ-니코.png',
+  '코그모': '/champion-icons/champ-코그모.png',
+  '트위치': '/champion-icons/champ-트위치.png',
+  '제리': '/champion-icons/champ-제리.png',
+  '스몰더': '/champion-icons/champ-스몰더.png',
+  '우르곳': '/champion-icons/champ-우르곳.png',
+  '쓰레쉬': '/champion-icons/champ-쓰레쉬.png',
+  '룰루': '/champion-icons/champ-룰루.png',
+  '레오나': '/champion-icons/champ-레오나.png',
+  '노틸러스': '/champion-icons/champ-노틸러스.png',
+  '유미': '/champion-icons/champ-유미.png',
+  '알리스타': '/champion-icons/champ-알리스타.png',
+  '브라움': '/champion-icons/champ-브라움.png',
+  '나미': '/champion-icons/champ-나미.png',
+  '라칸': '/champion-icons/champ-라칸.png',
+  '카르마': '/champion-icons/champ-카르마.png',
+  '파이크': '/champion-icons/champ-파이크.png',
+  '세라핀': '/champion-icons/champ-세라핀.png',
+  '소나': '/champion-icons/champ-소나.png',
+  '벨코즈': '/champion-icons/champ-벨코즈.png',
+  '밀리오': '/champion-icons/champ-밀리오.png',
+  '렐': '/champion-icons/champ-렐.png',
+  '자이라': '/champion-icons/champ-자이라.png',
+  '모르가나': '/champion-icons/champ-모르가나.png',
+  '바드': '/champion-icons/champ-바드.png',
+  '스웨인': '/champion-icons/champ-스웨인.png',
+  '잔나': '/champion-icons/champ-잔나.png',
+  '탐 켄치': '/champion-icons/champ-탐-켄치.png',
+  '블리츠크랭크': '/champion-icons/champ-블리츠크랭크.png',
+  '레나타 글라스크': '/champion-icons/champ-레나타-글라스크.png',
+  '소라카': '/champion-icons/champ-소라카.png',
+};
+
 // 구단 가치는 1군/2군(실제 로스터에 편성된 선수)만 반영하고, 예비 선수는 제외한다
 function computeClubValue(players) {
   return players.filter((p) => p.tier === '1군' || p.tier === '2군').reduce((s, p) => s + p.value, 0);
@@ -2885,10 +3014,14 @@ export default function App() {
           {ALL_CHAMPIONS_FLAT.filter((c) => guideChampFilter === 'ALL' || c.role === guideChampFilter).map(({ name, role }) => (
             <div key={name} className={`${panel} p-2 flex flex-col items-center gap-1`}>
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0 overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${POS_COLOR[role]}, #0A0E17)`, border: `1px solid ${POS_COLOR[role]}` }}
               >
-                {CHAMPION_WEAPON[name] || '❔'}
+                {CHAMPION_ICON[name] ? (
+                  <img src={CHAMPION_ICON[name]} alt={name} className="w-full h-full" style={{ objectFit: 'cover' }} />
+                ) : (
+                  CHAMPION_WEAPON[name] || '❔'
+                )}
               </div>
               <div className="text-xs text-center truncate w-full">{name}</div>
               <PosBadge position={role} />
@@ -3668,7 +3801,7 @@ export default function App() {
                     className={`p-2 rounded-lg text-center transition-colors flex flex-col items-center gap-1.5 ${tileClass}`}
                   >
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0"
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-base shrink-0 overflow-hidden"
                       style={{
                         background: `linear-gradient(135deg, ${POS_COLOR[role]}, #0A0E17)`,
                         filter: isBanned ? 'grayscale(1) opacity(0.5)' : 'none',
@@ -3677,6 +3810,8 @@ export default function App() {
                     >
                       {name === '가렌' ? (
                         <img src="/champion-garen.png" alt="가렌" width="26" height="26" />
+                      ) : CHAMPION_ICON[name] ? (
+                        <img src={CHAMPION_ICON[name]} alt={name} className="w-full h-full" style={{ objectFit: 'cover' }} />
                       ) : (
                         CHAMPION_WEAPON[name] || '❔'
                       )}
