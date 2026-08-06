@@ -88,7 +88,8 @@ const OPPONENTS = [
 ];
 
 const DRAGON_TYPES = ['화염', '바다', '대지', '바람', '마법'];
-const APP_VERSION = 'v.0.021';
+const APP_VERSION = 'v.0.022';
+const APP_LOGO_DATA_URI = 'data:image/webp;base64,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';
 const SINGLE_PULL_COST = 500;
 const MULTI_PULL_COUNT = 5;
 const MULTI_PULL_COST = 2250;
@@ -258,6 +259,18 @@ function rollPlayerGrade() {
 
 // tier(1군/2군)는 더 이상 능력치를 결정하지 않는다 - 구단이 로스터에서 자유롭게 지정하는 "보직"일 뿐이다.
 // 능력치는 등급(COMMON/RARE/EPIC) 확률에 따라 결정된다.
+// 포지션에 맞는 주력 챔피언 5개(그중 2개는 특별히 잘 다루는 챔피언)를 무작위로 정한다
+function generateSignatureChampions(position) {
+  const pool = [...CHAMPIONS[position]];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = randRange(0, i);
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const signatureChampions = pool.slice(0, 5);
+  const specialChampions = signatureChampions.slice(0, 2);
+  return { signatureChampions, specialChampions };
+}
+
 function generatePlayer(position, usedSet, idRef, opts = {}) {
   const gradeInfo = opts.gradeInfo || rollPlayerGrade();
   const base = randRange(gradeInfo.baseMin, gradeInfo.baseMax);
@@ -270,11 +283,13 @@ function generatePlayer(position, usedSet, idRef, opts = {}) {
   return {
     id: idRef.current++,
     name: generateName(usedSet),
-    position, tier: opts.tier || '2군',
+    position, tier: opts.tier || '예비',
     region: REGIONS[randRange(0, REGIONS.length - 1)],
     mechanics, gameSense, teamfight, laning,
     overall, potential, level: 1, exp: 0, value,
     grade: gradeInfo.grade,
+    ...generateSignatureChampions(position),
+    achievements: { regionalWins: 0, regionalRunnerUps: 0, internationalWins: 0, internationalRunnerUps: 0 },
   };
 }
 
@@ -284,7 +299,7 @@ function generateInitialGame(name, region, usedSetRef, idRef) {
     // 창단 시작 선수는 항상 커먼 등급으로 고정 - 낮은 구단파워로 시작해서 성장/영입으로 강해지는 구조
     players.push(generatePlayer(pos, usedSetRef.current, idRef, { tier: '1군', gradeInfo: PLAYER_GRADE_TABLE[0] }));
   });
-  const clubValue = players.reduce((s, p) => s + p.value, 0);
+  const clubValue = computeClubValue(players);
   const club = { name, region, value: clubValue, budget: 5000, wins: 0, losses: 0 };
   return { club, players, matchHistory: [] };
 }
@@ -303,9 +318,11 @@ function createSpecialPlayer(config, usedSetRef, idRef) {
   const value = Math.round(overall * 12 + config.potential * 4);
   return {
     id: idRef.current++,
-    name: config.name, position: config.position, tier: '1군', region: config.region,
+    name: config.name, position: config.position, tier: '예비', region: config.region,
     mechanics: config.mechanics, gameSense: config.gameSense, teamfight: config.teamfight, laning: config.laning,
     overall, potential: config.potential, level: 1, exp: 0, value,
+    ...generateSignatureChampions(config.position),
+    achievements: { regionalWins: 0, regionalRunnerUps: 0, internationalWins: 0, internationalRunnerUps: 0 },
   };
 }
 
@@ -325,7 +342,7 @@ function ensureSpecialListings(list, players, usedSetRef, idRef) {
 
 function generateNpcListing(usedSetRef, idRef, forcedPosition) {
   const position = forcedPosition || POSITIONS[randRange(0, POSITIONS.length - 1)];
-  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '2군' });
+  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '예비' });
   const price = Math.round(player.value * (randRange(80, 130) / 100));
   const fromClub = OPPONENTS[randRange(0, OPPONENTS.length - 1)].name;
   return { ...player, price, fromClub, source: 'npc' };
@@ -341,7 +358,7 @@ function generateFullNpcMarket(usedSetRef, idRef) {
 
 function gachaPull(usedSetRef, idRef, forcedPosition) {
   const position = forcedPosition || POSITIONS[randRange(0, POSITIONS.length - 1)];
-  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '2군' });
+  const player = generatePlayer(position, usedSetRef.current, idRef, { tier: '예비' });
   return player;
 }
 
@@ -463,6 +480,11 @@ const CHAMPION_WEAPON = {
   '잔나': '🌪️', '탐 켄치': '👅', '블리츠크랭크': '🤖', '레나타 글라스크': '⛓️', '소라카': '🌟',
 };
 
+// 구단 가치는 1군/2군(실제 로스터에 편성된 선수)만 반영하고, 예비 선수는 제외한다
+function computeClubValue(players) {
+  return players.filter((p) => p.tier === '1군' || p.tier === '2군').reduce((s, p) => s + p.value, 0);
+}
+
 function computeTeamPower(players, tier = '1군') {
   return POSITIONS.reduce((sum, pos) => {
     const candidates = players.filter((p) => p.position === pos);
@@ -560,6 +582,7 @@ function generateOpponentLineup(power, tierLabel, clubName) {
       position: pos, tier,
       mechanics, gameSense, teamfight, laning, overall,
       champion: null, kills: 0, deaths: 0, assists: 0, damage: 0,
+      ...generateSignatureChampions(pos),
     };
   });
 }
@@ -927,9 +950,9 @@ function StatBar({ label, value, max = 99, color = '#38BDF8' }) {
 }
 
 function TierBadge({ tier }) {
-  const isFirst = tier === '1군';
+  const cls = tier === '1군' ? 'lm-tier-1' : tier === '2군' ? 'lm-tier-2' : 'lm-tier-reserve';
   return (
-    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${isFirst ? 'lm-tier-1' : 'lm-tier-2'}`}>
+    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${cls}`}>
       {tier}
     </span>
   );
@@ -958,6 +981,7 @@ export default function App() {
   const [draft, setDraft] = useState(null);
   const [champFilter, setChampFilter] = useState('ALL');
   const [guideChampFilter, setGuideChampFilter] = useState('ALL');
+  const [viewingPlayerId, setViewingPlayerId] = useState(null);
   const [champAssignment, setChampAssignment] = useState({});
   const [forfeitConfirm, setForfeitConfirm] = useState(false);
   const [entryPoolDraft, setEntryPoolDraft] = useState({});
@@ -1144,7 +1168,7 @@ export default function App() {
   function handleReleasePlayer(playerId) {
     setGame((prev) => {
       const newPlayers = prev.players.filter((p) => p.id !== playerId);
-      const club = { ...prev.club, value: newPlayers.reduce((s, p) => s + p.value, 0) };
+      const club = { ...prev.club, value: computeClubValue(newPlayers) };
       const newGame = { ...prev, club, players: newPlayers };
       saveGame(newGame);
       return newGame;
@@ -1167,7 +1191,15 @@ export default function App() {
 
   function handleSetTier(playerId, newTier) {
     setGame((prev) => {
-      const newPlayers = prev.players.map((p) => (p.id === playerId ? { ...p, tier: newTier } : p));
+      const player = prev.players.find((p) => p.id === playerId);
+      if (!player || player.tier === newTier) return prev;
+      const oldTier = player.tier;
+      const occupant = prev.players.find((p) => p.position === player.position && p.tier === newTier && p.id !== playerId);
+      const newPlayers = prev.players.map((p) => {
+        if (p.id === playerId) return { ...p, tier: newTier };
+        if (occupant && p.id === occupant.id) return { ...p, tier: oldTier };
+        return p;
+      });
       const newGame = { ...prev, players: newPlayers };
       saveGame(newGame);
       return newGame;
@@ -1196,7 +1228,7 @@ export default function App() {
     const listing = { ...player, price, fromClub: game.club.name, source: 'user' };
     setGame((prev) => {
       const newPlayers = prev.players.filter((p) => p.id !== playerId);
-      const club = { ...prev.club, value: newPlayers.reduce((s, p) => s + p.value, 0) };
+      const club = { ...prev.club, value: computeClubValue(newPlayers) };
       const newGame = { ...prev, club, players: newPlayers };
       saveGame(newGame);
       return newGame;
@@ -1231,7 +1263,7 @@ export default function App() {
     setGame((prev) => {
       const newPlayers = prev.players.filter((p) => p.id !== playerId);
       const mySaleCodes = [...(prev.club.mySaleCodes || []), { code, playerName: player.name, price, claimed: false }];
-      const club = { ...prev.club, value: newPlayers.reduce((s, p) => s + p.value, 0), mySaleCodes };
+      const club = { ...prev.club, value: computeClubValue(newPlayers), mySaleCodes };
       const newGame = { ...prev, club, players: newPlayers };
       saveGame(newGame);
       return newGame;
@@ -1289,10 +1321,10 @@ export default function App() {
       const data = JSON.parse(res.value);
       if (data.sold) { setPlayerCodeStatus('이미 판매 완료된 선수예요.'); return; }
       if (game.club.budget < data.price) { setPlayerCodeStatus('포인트가 부족해요.'); return; }
-      const newPlayer = { id: idRef.current++, ...data.player, exp: 0, level: 1, value: Math.round(data.player.overall * 12 + data.player.potential * 4) };
+      const newPlayer = { id: idRef.current++, ...data.player, tier: '예비', exp: 0, level: 1, value: Math.round(data.player.overall * 12 + data.player.potential * 4) };
       setGame((prev) => {
         const players = [...prev.players, newPlayer];
-        const club = { ...prev.club, budget: prev.club.budget - data.price, value: players.reduce((s, p) => s + p.value, 0) };
+        const club = { ...prev.club, budget: prev.club.budget - data.price, value: computeClubValue(players) };
         const newGame = { ...prev, club, players };
         saveGame(newGame);
         return newGame;
@@ -1313,7 +1345,7 @@ export default function App() {
     const { price, fromClub, source, ...playerData } = listing;
     setGame((prev) => {
       const players = [...prev.players, playerData];
-      const club = { ...prev.club, budget: prev.club.budget - price, value: players.reduce((s, p) => s + p.value, 0) };
+      const club = { ...prev.club, budget: prev.club.budget - price, value: computeClubValue(players) };
       const newGame = { ...prev, club, players };
       saveGame(newGame);
       return newGame;
@@ -1358,7 +1390,7 @@ export default function App() {
     }
     setGame((prev) => {
       const players = [...prev.players, ...newPlayers];
-      const club = { ...prev.club, budget: prev.club.budget - cost, value: players.reduce((s, p) => s + p.value, 0) };
+      const club = { ...prev.club, budget: prev.club.budget - cost, value: computeClubValue(players) };
       const newGame = { ...prev, club, players };
       saveGame(newGame);
       return newGame;
@@ -1627,6 +1659,16 @@ export default function App() {
     setScreen('home');
   }
 
+  function creditAchievements(players, entryPool, field) {
+    if (!entryPool || !field) return players;
+    const participantIds = new Set(POSITIONS.flatMap((pos) => entryPool[pos] || []));
+    return players.map((p) => {
+      if (!participantIds.has(p.id)) return p;
+      const prevAch = p.achievements || { regionalWins: 0, regionalRunnerUps: 0, internationalWins: 0, internationalRunnerUps: 0 };
+      return { ...p, achievements: { ...prevAch, [field]: (prevAch[field] || 0) + 1 } };
+    });
+  }
+
   function handleFinishLeague() {
     const league = game.league;
     const tierMult = league && league.tier === '2군' ? 0.5 : 1;
@@ -1637,9 +1679,11 @@ export default function App() {
       const allScores = [...aiScores, userScore].sort((a, b) => b - a);
       const rank = allScores.indexOf(userScore) + 1;
       const rankReward = Math.round((rank === 1 ? REGIONAL_REWARD.rank1 : rank === 2 ? REGIONAL_REWARD.rank2 : rank === 3 ? REGIONAL_REWARD.rank3 : 0) * tierMult);
+      const achField = rank === 1 ? 'regionalWins' : rank === 2 ? 'regionalRunnerUps' : null;
       setGame((prev) => {
         const club = { ...prev.club, qualifiedRank: rank, qualifiedRegion: league.region, qualifiedWins: userWinsCount, budget: prev.club.budget + rankReward };
-        const newGame = { ...prev, club, league: null };
+        const players = creditAchievements(prev.players, league.entryPool, achField);
+        const newGame = { ...prev, club, players, league: null };
         saveGame(newGame);
         return newGame;
       });
@@ -1652,9 +1696,11 @@ export default function App() {
       else if (!wonLast && league.roundIndex === 1) placement = '4강';
       else if (!wonLast && league.roundIndex === 0) placement = '8강';
       const rankReward = Math.round((placement === '우승' ? INTERNATIONAL_REWARD.rank1 : placement === '준우승' ? INTERNATIONAL_REWARD.rank2 : placement === '4강' ? INTERNATIONAL_REWARD.rank3 : 0) * tierMult);
+      const achField = placement === '우승' ? 'internationalWins' : placement === '준우승' ? 'internationalRunnerUps' : null;
       setGame((prev) => {
         const club = { ...prev.club, ...(placement ? { internationalResult: placement } : {}), budget: prev.club.budget + rankReward };
-        const newGame = { ...prev, club, league: null };
+        const players = creditAchievements(prev.players, league.entryPool, achField);
+        const newGame = { ...prev, club, players, league: null };
         saveGame(newGame);
         return newGame;
       });
@@ -1790,10 +1836,19 @@ export default function App() {
     setScreen('home');
   }
 
+  function applyChampionMastery(p) {
+    if (!p.champion) return p;
+    let bonus = 0;
+    if (p.specialChampions && p.specialChampions.includes(p.champion)) bonus = 4;
+    else if (p.signatureChampions && p.signatureChampions.includes(p.champion)) bonus = 2;
+    if (bonus === 0) return p;
+    return { ...p, overall: clamp(p.overall + bonus, 0, 99) };
+  }
+
   function initSim() {
-    const userFinal = userLineup.map((u) => ({ ...u, champion: champAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
+    const userFinal = userLineup.map((u) => applyChampionMastery({ ...u, champion: champAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
     const aiAssignment = assignPicksToPositions(draft.aiPicks);
-    const aiFinal = opponentLineup.map((a) => ({ ...a, champion: aiAssignment[a.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
+    const aiFinal = opponentLineup.map((a) => applyChampionMastery({ ...a, champion: aiAssignment[a.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
     const totalTicks = randRange(21, 34);
     setSim({
       tick: 0, totalTicks, userLineup: userFinal, aiLineup: aiFinal,
@@ -1929,7 +1984,7 @@ export default function App() {
       club.wins += wasWin ? 1 : 0;
       club.losses += wasWin ? 0 : 1;
     }
-    club.value = newPlayers.reduce((s, p) => s + p.value, 0);
+    club.value = computeClubValue(newPlayers);
 
     const prevHistory = game.matchHistory || [];
     let matchHistory = prevHistory;
@@ -1987,6 +2042,27 @@ export default function App() {
   const fontStyle = { fontFamily: "'Rajdhani', system-ui, sans-serif" };
   const displayFont = { fontFamily: "'Teko', system-ui, sans-serif" };
 
+  function PageBackdrop() {
+    return (
+      <div className="absolute top-0 left-0 right-0 overflow-hidden pointer-events-none select-none" style={{ height: 140, zIndex: -1 }}>
+        <svg viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%', display: 'block' }}>
+          <defs>
+            <radialGradient id="bgGlow" cx="50%" cy="10%" r="60%">
+              <stop offset="0%" stopColor="#2C3A63" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#0A0E17" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <rect width="400" height="180" fill="#0A0E17" />
+          <rect width="400" height="180" fill="url(#bgGlow)" />
+          <path d="M0,120 L40,80 L75,105 L110,55 L150,95 L190,60 L230,100 L270,70 L310,105 L350,75 L400,110 L400,180 L0,180 Z" fill="#1D2740" opacity="0.35" />
+          <path d="M0,140 L50,100 L90,130 L130,85 L170,125 L210,90 L250,130 L300,95 L340,135 L400,115 L400,180 L0,180 Z" fill="#151D33" opacity="0.45" />
+          <path d="M0,160 L60,125 L100,150 L150,110 L200,150 L250,120 L300,155 L350,125 L400,150 L400,180 L0,180 Z" fill="#0F1626" opacity="0.6" />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(10,14,23,0) 0%, rgba(10,14,23,0.75) 45%, rgba(10,14,23,1) 100%)' }} />
+      </div>
+    );
+  }
+
   function Header({ subtitle }) {
     if (!game) return null;
     return (
@@ -2027,15 +2103,7 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className={`${panel} p-8 w-full max-w-md text-center`}>
-          <svg viewBox="0 0 100 100" width="72" height="72" className="mx-auto mb-2">
-            <circle cx="50" cy="8" r="3.5" fill="#2DD4C6" />
-            <path d="M35 20 Q18 20 18 34 Q18 49 35 49" fill="none" stroke="#D9AE55" strokeWidth="4" strokeLinecap="round" />
-            <path d="M65 20 Q82 20 82 34 Q82 49 65 49" fill="none" stroke="#D9AE55" strokeWidth="4" strokeLinecap="round" />
-            <path d="M34 16 H66 V36 Q66 58 50 61 Q34 58 34 36 Z" fill="#0F1830" stroke="#D9AE55" strokeWidth="3.5" />
-            <rect x="47" y="61" width="6" height="13" fill="#D9AE55" />
-            <path d="M38 74 H62 L57 87 H43 Z" fill="#0F1830" stroke="#D9AE55" strokeWidth="3" />
-            <rect x="32" y="87" width="36" height="7" rx="1.5" fill="#D9AE55" />
-          </svg>
+          <img src={APP_LOGO_DATA_URI} alt="롤매니저 로고" className="mx-auto mb-2" width="120" height="120" style={{ objectFit: 'contain' }} />
           <h1 className="text-5xl mb-1 tracking-wide" style={{ ...displayFont, color: '#D9AE55' }}>롤매니저</h1>
           <p className="text-sm mb-6 lm-muted">나만의 e스포츠 구단을 만들어보세요</p>
           <input
@@ -2070,7 +2138,8 @@ export default function App() {
   function renderHome() {
     const nowParts = getKSTParts(getOnlineNow());
     return (
-      <div className="max-w-5xl mx-auto p-4 md:p-8">
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <div className={`${panel} p-3 mb-4 flex items-center justify-center gap-2`}>
           <span className="text-sm font-semibold tracking-wide">
             {nowParts.year}년 {nowParts.month}월 {nowParts.day}일 {nowParts.hour}:{nowParts.minute}
@@ -2185,9 +2254,14 @@ export default function App() {
     const power1 = computeTeamPower(game.players, '1군');
     const power2 = has2gun ? computeTeamPower(game.players, '2군') : null;
     return (
-      <div className="max-w-5xl mx-auto p-4 md:p-8">
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="선수단 관리" />
-        <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm`}>← 홈으로</button>
+          <button onClick={() => setScreen('rosterManage')} className={`${btnGhost} px-4 py-2 text-sm`}>선수단 관리</button>
+          <button onClick={() => setScreen('rankings')} className={`${btnGhost} px-4 py-2 text-sm`}>랭킹</button>
+        </div>
         <div className={`${panel} p-4 mb-4 flex items-center justify-between flex-wrap gap-3`}>
           <div>
             <span className="text-sm font-semibold">1군 팀파워</span>
@@ -2208,7 +2282,7 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="text-xs mb-4 lm-muted">선수 카드의 1군/2군 배지를 탭하면 보직을 바로 전환할 수 있어요.</div>
+        <div className="text-xs mb-4 lm-muted">1군/2군 배치는 "선수단 관리" 화면에서 바꿀 수 있어요.</div>
         <div className="space-y-6">
           {filteredPositions.map((pos) => {
             const posPlayers = game.players.filter((p) => p.position === pos);
@@ -2253,12 +2327,7 @@ export default function App() {
                           >
                             <User size={30} color="#3A4670" />
                           </div>
-                          <button
-                            onClick={() => handleSetTier(p.id, p.tier === '1군' ? '2군' : '1군')}
-                            title="탭하여 1군/2군 전환"
-                          >
-                            <TierBadge tier={p.tier} />
-                          </button>
+                          <TierBadge tier={p.tier} />
                         </div>
 
                         <div className="text-center text-xs lm-muted">OVR <b className="lm-text-value">{p.overall}</b> · 잠재력 <b className="lm-text-value">{p.potential}</b></div>
@@ -2272,6 +2341,7 @@ export default function App() {
                           <StatBar label="한타" value={p.teamfight} color="#EF4444" />
                           <StatBar label="라인전" value={p.laning} color="#38BDF8" />
                         </div>
+                        <button onClick={() => { setViewingPlayerId(p.id); setScreen('playerDetail'); }} className={`${btnGhost} w-full py-1.5 text-xs mb-2`}>상세보기</button>
                         {faDeclareId === p.id ? (
                           faDeclareMode === null ? (
                             <div className="flex flex-col gap-1.5">
@@ -2331,13 +2401,160 @@ export default function App() {
     );
   }
 
+  function renderPlayerDetail() {
+    const p = game.players.find((pl) => pl.id === viewingPlayerId);
+    if (!p) {
+      return (
+        <div className="max-w-2xl mx-auto p-4 md:p-8">
+          <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm`}>← 선수단으로</button>
+          <div className="text-sm mt-4 lm-muted">선수를 찾을 수 없어요.</div>
+        </div>
+      );
+    }
+    const ach = p.achievements || { regionalWins: 0, regionalRunnerUps: 0, internationalWins: 0, internationalRunnerUps: 0 };
+    const signature = p.signatureChampions || [];
+    const special = p.specialChampions || [];
+    return (
+      <div className="max-w-2xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
+        <Header subtitle="선수 상세정보" />
+        <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
+
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-lg">{p.name}</span>
+              <PosBadge position={p.position} />
+              <TierBadge tier={p.tier} />
+            </div>
+            <span className="text-xs lm-muted">{p.region}</span>
+          </div>
+          <div className="text-xs lm-muted">OVR <b className="lm-text-value">{p.overall}</b> · 잠재력 <b className="lm-text-value">{p.potential}</b> · Lv.{p.level}</div>
+          <div className="text-xs lm-muted">시장가치 <span style={{ color: '#D9AE55' }}>{p.value.toLocaleString()} P</span></div>
+        </div>
+
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="text-sm font-semibold mb-2">능력치</div>
+          <div className="space-y-1.5">
+            <StatBar label="피지컬" value={p.mechanics} color="#F59E0B" />
+            <StatBar label="운영" value={p.gameSense} color="#8B5CF6" />
+            <StatBar label="한타" value={p.teamfight} color="#EF4444" />
+            <StatBar label="라인전" value={p.laning} color="#38BDF8" />
+          </div>
+        </div>
+
+        <div className={`${panel} p-4 mb-4`}>
+          <div className="text-sm font-semibold mb-2">개인 우승 기록</div>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <div className="lm-muted mb-1">국내리그</div>
+              <div>우승 <b className="lm-text-value">{ach.regionalWins}</b>회 · 준우승 <b className="lm-text-value">{ach.regionalRunnerUps}</b>회</div>
+            </div>
+            <div>
+              <div className="lm-muted mb-1">국제리그</div>
+              <div>우승 <b className="lm-text-value">{ach.internationalWins}</b>회 · 준우승 <b className="lm-text-value">{ach.internationalRunnerUps}</b>회</div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`${panel} p-4`}>
+          <div className="text-sm font-semibold mb-1">주력 챔피언</div>
+          <div className="text-xs mb-3 lm-muted">이 중 골드로 표시된 2개는 특별히 잘 다루는 챔피언이에요.</div>
+          <div className="grid grid-cols-5 gap-2">
+            {signature.map((champ) => {
+              const isSpecial = special.includes(champ);
+              return (
+                <div key={champ} className="flex flex-col items-center gap-1">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg"
+                    style={{
+                      background: 'linear-gradient(135deg, #1D2740, #0A0E17)',
+                      border: `2px solid ${isSpecial ? '#D9AE55' : '#2A3550'}`,
+                    }}
+                  >
+                    {CHAMPION_WEAPON[champ] || '❔'}
+                  </div>
+                  <div className="text-xs text-center truncate w-full" style={isSpecial ? { color: '#D9AE55', fontWeight: 700 } : {}}>{champ}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderRosterManage() {
+    const SlotBoard = ({ tier, color }) => (
+      <div className="mb-4">
+        <div className="text-sm font-semibold mb-2">{tier}</div>
+        <div className="grid grid-cols-5 gap-2">
+          {POSITIONS.map((pos) => {
+            const occupant = game.players.find((p) => p.position === pos && p.tier === tier);
+            return (
+              <div key={pos} className={`${panel} p-2 text-center`}>
+                <PosBadge position={pos} />
+                <div className="text-xs mt-1 truncate" style={occupant ? { color } : {}}>
+                  {occupant ? occupant.name : '(비어있음)'}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+    return (
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
+        <Header subtitle="선수단 관리" />
+        <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
+
+        <SlotBoard tier="1군" color="#D9AE55" />
+        <SlotBoard tier="2군" color="#9AA6C7" />
+
+        <div className="text-sm font-semibold mb-2 mt-6">전체 선수</div>
+        <div className="text-xs mb-3 lm-muted">선수 아래 1군/2군 버튼을 누르면 그 자리로 배치돼요. 이미 그 자리에 있던 선수는 서로 자리를 맞바꿔요.</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {[...game.players].sort((a, b) => POSITIONS.indexOf(a.position) - POSITIONS.indexOf(b.position)).map((p) => (
+            <div key={p.id} className={`${panel} p-3`}>
+              <div className="flex items-center justify-between mb-2 gap-1">
+                <span className="font-bold text-sm truncate flex items-center gap-1"><PosBadge position={p.position} /> {p.name}</span>
+              </div>
+              <div className="text-xs mb-2 lm-muted text-center">OVR <b className="lm-text-value">{p.overall}</b> · 현재 <b className="lm-text-value">{p.tier}</b></div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => handleSetTier(p.id, '1군')}
+                  disabled={p.tier === '1군'}
+                  className="text-xs px-2 py-1.5 rounded lm-btn-ghost flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ color: '#D9AE55' }}
+                >
+                  1군
+                </button>
+                <button
+                  onClick={() => handleSetTier(p.id, '2군')}
+                  disabled={p.tier === '2군'}
+                  className="text-xs px-2 py-1.5 rounded lm-btn-ghost flex-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ color: '#9AA6C7' }}
+                >
+                  2군
+                </button>
+              </div>
+              <button onClick={() => { setViewingPlayerId(p.id); setScreen('playerDetail'); }} className={`${btnGhost} w-full py-1.5 text-xs mt-1.5`}>상세보기</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function renderSponsors() {
     const sponsors = game.club.sponsors || [];
     const maxSlots = Math.floor(game.club.value / SPONSOR_VALUE_PER_SLOT);
     const dailyPerSponsor = Math.round(game.club.value * SPONSOR_DAILY_RATE);
     const categories = Object.keys(SPONSOR_CATEGORIES);
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="스폰서 구하기" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -2389,7 +2606,8 @@ export default function App() {
       </div>
     );
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="게임 가이드" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -2437,7 +2655,8 @@ export default function App() {
 
   function renderChampionList() {
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="챔피언 리스트" />
         <button onClick={() => setScreen('guide')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 가이드로</button>
 
@@ -2480,9 +2699,10 @@ export default function App() {
     const international = getInternationalQualifiers(game);
 
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="랭킹" />
-        <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
+        <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
 
         <div className="flex gap-2 mb-4">
           <button onClick={() => setRankingTab('domestic')} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${rankingTab === 'domestic' ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>국내 ({LEAGUE_NAME[region]})</button>
@@ -2523,7 +2743,8 @@ export default function App() {
 
   function renderOnlineMatch() {
     return (
-      <div className="max-w-2xl mx-auto p-4 md:p-8">
+      <div className="max-w-2xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="온라인 매칭" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -2619,7 +2840,8 @@ export default function App() {
   function renderMatchHistory() {
     const history = game.matchHistory || [];
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="전적" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
         <div className={`${panel} p-4 mb-4 text-center`}>
@@ -2651,7 +2873,8 @@ export default function App() {
     const listings = faMarket || [];
     const filteredListings = faPositionFilter === 'ALL' ? listings : listings.filter((l) => l.position === faPositionFilter);
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
+        <PageBackdrop />
         <Header subtitle="선수 영입" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-6`}>← 홈으로</button>
 
@@ -3469,7 +3692,8 @@ export default function App() {
         <div className="space-y-5">
           {POSITIONS.map((pos) => {
             const tierMatched = game.players.filter((p) => p.position === pos && p.tier === leagueTier);
-            const candidates = tierMatched.length > 0 ? tierMatched : game.players.filter((p) => p.position === pos);
+            const otherActiveTier = leagueTier === '1군' ? '2군' : '1군';
+            const candidates = tierMatched.length > 0 ? tierMatched : game.players.filter((p) => p.position === pos && p.tier === otherActiveTier);
             const pool = entryPoolDraft[pos] || [];
             return (
               <div key={pos}>
@@ -3673,6 +3897,7 @@ export default function App() {
         .lm-input:focus { border-color:#C89B3C; outline:none; }
         .lm-tier-1 { background:#C89B3C; color:#1A1305; }
         .lm-tier-2 { background:#2A3550; color:#9FB0D9; }
+        .lm-tier-reserve { background:#1A2033; color:#5C6786; }
         .lm-lineup-selected { border:1px solid #C89B3C; background:#1D2740; }
         .lm-lineup-default { border:1px solid #232E4A; background:#0A0E17; }
         .lm-lineup-hover:hover { border-color:#3A4670; }
@@ -3692,6 +3917,8 @@ export default function App() {
       {screen === 'create' && renderCreate()}
       {screen === 'home' && game && renderHome()}
       {screen === 'roster' && game && renderRoster()}
+      {screen === 'rosterManage' && game && renderRosterManage()}
+      {screen === 'playerDetail' && game && renderPlayerDetail()}
       {screen === 'matchHistory' && game && renderMatchHistory()}
       {screen === 'rankings' && game && renderRankings()}
       {screen === 'onlineMatch' && game && renderOnlineMatch()}
