@@ -2175,6 +2175,13 @@ export default function App() {
   /* ============================== 화면 렌더 ============================== */
 
   const shell = 'min-h-screen w-full lm-root';
+  // 배포판에서는 인라인 data URI 대신 실제 파일(public/backdrop.png)을 참조합니다.
+  const backdropStyle = {
+    backgroundImage: `linear-gradient(to bottom, rgba(10,14,23,0) 0%, rgba(10,14,23,0.55) 62%, rgba(10,14,23,1) 100%), url("/backdrop.png")`,
+    backgroundRepeat: 'no-repeat, repeat-x',
+    backgroundPosition: 'top, top left',
+    backgroundSize: '100% 160px, auto 160px',
+  };
   const panel = 'lm-panel rounded-xl';
   const btnPrimary = 'lm-btn-primary font-bold rounded-lg transition-colors';
   const btnGhost = 'lm-btn-ghost font-semibold rounded-lg transition-colors';
@@ -2201,27 +2208,6 @@ export default function App() {
             </button>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  function PageBackdrop() {
-    return (
-      <div className="absolute top-0 left-0 right-0 overflow-hidden pointer-events-none select-none" style={{ height: 140, zIndex: -1 }}>
-        <svg viewBox="0 0 400 180" preserveAspectRatio="xMidYMid slice" style={{ width: '100%', height: '100%', display: 'block' }}>
-          <defs>
-            <radialGradient id="bgGlow" cx="50%" cy="10%" r="60%">
-              <stop offset="0%" stopColor="#2C3A63" stopOpacity="0.35" />
-              <stop offset="100%" stopColor="#0A0E17" stopOpacity="0" />
-            </radialGradient>
-          </defs>
-          <rect width="400" height="180" fill="#0A0E17" />
-          <rect width="400" height="180" fill="url(#bgGlow)" />
-          <path d="M0,120 L40,80 L75,105 L110,55 L150,95 L190,60 L230,100 L270,70 L310,105 L350,75 L400,110 L400,180 L0,180 Z" fill="#1D2740" opacity="0.35" />
-          <path d="M0,140 L50,100 L90,130 L130,85 L170,125 L210,90 L250,130 L300,95 L340,135 L400,115 L400,180 L0,180 Z" fill="#151D33" opacity="0.45" />
-          <path d="M0,160 L60,125 L100,150 L150,110 L200,150 L250,120 L300,155 L350,125 L400,150 L400,180 L0,180 Z" fill="#0F1626" opacity="0.6" />
-        </svg>
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(10,14,23,0) 0%, rgba(10,14,23,0.75) 45%, rgba(10,14,23,1) 100%)' }} />
       </div>
     );
   }
@@ -2301,8 +2287,7 @@ export default function App() {
   function renderHome() {
     const nowParts = getKSTParts(getOnlineNow());
     return (
-      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <div className={`${panel} p-3 mb-4 flex items-center justify-center gap-2`}>
           <span className="text-sm font-semibold tracking-wide">
             {nowParts.year}년 {nowParts.month}월 {nowParts.day}일 {nowParts.hour}:{nowParts.minute}
@@ -2418,8 +2403,7 @@ export default function App() {
     const power1 = computeTeamPower(game.players, '1군');
     const power2 = has2gun ? computeTeamPower(game.players, '2군') : null;
     return (
-      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="선수단 관리" />
         <div className="flex flex-wrap gap-2 mb-4">
           <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm`}>← 홈으로</button>
@@ -2493,7 +2477,7 @@ export default function App() {
                             className="w-16 h-16 rounded-full flex items-center justify-center mb-1.5"
                             style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
                           >
-                            <User size={30} color="#3A4670" />
+                            <img src="/player-face-blind.png" alt="" width="30" height="30" />
                           </div>
                           <TierBadge tier={p.tier} />
                         </div>
@@ -2583,8 +2567,7 @@ export default function App() {
     const signature = p.signatureChampions || [];
     const special = p.specialChampions || [];
     return (
-      <div className="max-w-2xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-2xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="선수 상세정보" />
         <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
 
@@ -2674,8 +2657,7 @@ export default function App() {
       </div>
     );
     return (
-      <div className="max-w-5xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-5xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="선수단 관리" />
         <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
 
@@ -2723,8 +2705,7 @@ export default function App() {
     const dailyPerSponsor = Math.round(game.club.value * SPONSOR_DAILY_RATE);
     const categories = Object.keys(SPONSOR_CATEGORIES);
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="기업 스폰" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -2776,8 +2757,7 @@ export default function App() {
       </div>
     );
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="게임 가이드" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -2829,8 +2809,7 @@ export default function App() {
 
   function renderGradeTable() {
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="능력치 등급표" />
         <button onClick={() => setScreen('guide')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 가이드로</button>
 
@@ -2866,8 +2845,7 @@ export default function App() {
 
   function renderChampionList() {
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="챔피언 리스트" />
         <button onClick={() => setScreen('guide')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 가이드로</button>
 
@@ -2910,8 +2888,7 @@ export default function App() {
     const international = getInternationalQualifiers(game);
 
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="랭킹" />
         <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
 
@@ -2954,8 +2931,7 @@ export default function App() {
 
   function renderOnlineMatch() {
     return (
-      <div className="max-w-2xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-2xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="온라인 매칭" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
 
@@ -3051,8 +3027,7 @@ export default function App() {
   function renderMatchHistory() {
     const history = game.matchHistory || [];
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="전적" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
         <div className={`${panel} p-4 mb-4 text-center`}>
@@ -3084,8 +3059,7 @@ export default function App() {
     const listings = faMarket || [];
     const filteredListings = faPositionFilter === 'ALL' ? listings : listings.filter((l) => l.position === faPositionFilter);
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="선수 영입" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-6`}>← 홈으로</button>
 
@@ -3158,7 +3132,7 @@ export default function App() {
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-1.5"
                   style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[l.position]}` }}
                 >
-                  <User size={30} color="#3A4670" />
+                  <img src="/player-face-blind.png" alt="" width="30" height="30" />
                 </div>
                 <div className="flex items-center gap-1">
                   <PosBadge position={l.position} />
@@ -3224,7 +3198,7 @@ export default function App() {
                               className="w-12 h-12 rounded-full flex items-center justify-center mt-1"
                               style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
                             >
-                              <User size={22} color="#3A4670" />
+                              <img src="/player-face-blind.png" alt="" width="22" height="22" />
                             </div>
                           )}
                           {stage >= 3 && <div className="font-bold text-sm mt-1">{p.name}</div>}
@@ -3357,8 +3331,7 @@ export default function App() {
     const signature = p.signatureChampions || [];
     const special = p.specialChampions || [];
     return (
-      <div className="max-w-2xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-2xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="상대 선수 상세정보" />
         <button onClick={() => setScreen(opponentDetailReturnScreen)} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 뒤로</button>
 
@@ -3416,8 +3389,7 @@ export default function App() {
     const minutes = Math.floor(scoutingTimeLeft / 60);
     const seconds = scoutingTimeLeft % 60;
     return (
-      <div className="max-w-3xl mx-auto p-4 md:p-8 relative">
-        <PageBackdrop />
+      <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="전력분석" />
         <div className={`${panel} p-4 mb-4 text-center`}>
           <div className="text-xs mb-1 lm-muted">분석 가능 시간</div>
@@ -3675,18 +3647,7 @@ export default function App() {
                       }}
                     >
                       {name === '가렌' ? (
-                        <svg viewBox="0 0 40 40" width="26" height="26">
-                          <path d="M20 4 C11 4 6 11 6 20 V26 C6 30 9 33 13 33 H27 C31 33 34 30 34 26 V20 C34 11 29 4 20 4 Z" fill="#D9AE55" stroke="#1B2A55" strokeWidth="1.5" />
-                          <rect x="18" y="3" width="4" height="8" fill="#3B5BDB" />
-                          <path d="M18 18 V33 M13 24 H27" stroke="#0A0E17" strokeWidth="2.2" strokeLinecap="round" />
-                          <path d="M6 20 L1.5 22 L6 26 Z" fill="#3B5BDB" />
-                          <path d="M34 20 L38.5 22 L34 26 Z" fill="#3B5BDB" />
-                          <line x1="11" y1="33" x2="29" y2="15" stroke="#C7CDD9" strokeWidth="3.2" strokeLinecap="square" />
-                          <path d="M29 15 L34 8 L31 18 Z" fill="#E5E9F0" />
-                          <line x1="14" y1="30" x2="19" y2="25" stroke="#D9AE55" strokeWidth="2" strokeLinecap="round" />
-                          <line x1="9" y1="35" x2="11.5" y2="32.5" stroke="#3B2A1A" strokeWidth="2.4" strokeLinecap="round" />
-                          <circle cx="8" cy="36" r="1.8" fill="#D9AE55" />
-                        </svg>
+                        <img src="/champion-garen.png" alt="가렌" width="26" height="26" />
                       ) : (
                         CHAMPION_WEAPON[name] || '❔'
                       )}
@@ -3811,11 +3772,7 @@ export default function App() {
         <div className="absolute inset-0" style={{ clipPath: 'polygon(0% 55%, 0% 100%, 45% 100%)', background: 'rgba(59,130,246,0.12)' }} />
         <div className="absolute inset-0" style={{ clipPath: 'polygon(100% 45%, 100% 0%, 55% 0%)', background: 'rgba(239,68,68,0.12)' }} />
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
-          <path d="M 4,6 Q 22,24 50,50 Q 78,76 96,94" stroke="rgba(80,175,215,0.65)" strokeWidth="6.5" fill="none" strokeLinecap="round" />
-          <path d="M 4,6 Q 22,24 50,50 Q 78,76 96,94" stroke="rgba(210,240,250,0.55)" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M 10,90 L 10,18 Q 10,8 20,8 L 90,8" stroke="rgba(230,215,165,0.65)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
-          <path d="M 10,90 L 82,90 Q 92,90 92,80 L 92,10" stroke="rgba(230,215,165,0.65)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
-          <path d="M 12,86 Q 50,50 88,14" stroke="rgba(230,215,165,0.5)" strokeWidth="1.8" fill="none" strokeDasharray="2.6 2" />
+          <image href="/map-background.png" x="0" y="0" width="100" height="100" />
           {BLUE_TOWERS.map((pt, i) => i >= s.objectives.ai.towers && (
             <circle key={'bt' + i} cx={pt.x} cy={pt.y} r="1.9" fill="#3B82F6" fillOpacity="0.85" stroke="#BFDBFE" strokeWidth="0.5" />
           ))}
