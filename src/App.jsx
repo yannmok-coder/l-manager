@@ -345,6 +345,14 @@ const SPECIAL_PLAYERS = [
   { name: 'mPeyz', position: 'ADC', region: '한국', mechanics: 89, gameSense: 83, teamfight: 85, laning: 87, potential: 96 },
 ];
 
+const PLAYER_PORTRAITS = {
+  'mDoran': '/portrait-mdoran.png',
+  'mOner': '/portrait-moner.png',
+  'mFAKER': '/portrait-mfaker.png',
+  'mPeyz': '/portrait-mpeyz.png',
+  'mKeria': '/portrait-mkeria.png',
+};
+
 function createSpecialPlayer(config, usedSetRef, idRef) {
   usedSetRef.current.add(config.name);
   const overall = Math.round((config.mechanics + config.gameSense + config.teamfight + config.laning) / 4);
@@ -2175,7 +2183,7 @@ export default function App() {
   /* ============================== 화면 렌더 ============================== */
 
   const shell = 'min-h-screen w-full lm-root';
-  // 배포판에서는 인라인 data URI 대신 실제 파일(public/backdrop.png)을 참조합니다.
+    // 배포판에서는 인라인 data URI 대신 실제 파일(public/backdrop.png)을 참조합니다.
   const backdropStyle = {
     backgroundImage: `linear-gradient(to bottom, rgba(10,14,23,0) 0%, rgba(10,14,23,0.55) 62%, rgba(10,14,23,1) 100%), url("/backdrop.png")`,
     backgroundRepeat: 'no-repeat, repeat-x',
@@ -2477,7 +2485,11 @@ export default function App() {
                             className="w-16 h-16 rounded-full flex items-center justify-center mb-1.5"
                             style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
                           >
-                            <img src="/player-face-blind.png" alt="" width="30" height="30" />
+                            {PLAYER_PORTRAITS[p.name] ? (
+                              <img src={PLAYER_PORTRAITS[p.name]} alt={p.name} className="w-full h-full rounded-full" style={{ objectFit: 'cover' }} />
+                            ) : (
+                              <img src="/player-face-blind.png" alt="" width="30" height="30" />
+                            )}
                           </div>
                           <TierBadge tier={p.tier} />
                         </div>
@@ -2572,6 +2584,15 @@ export default function App() {
         <button onClick={() => setScreen('roster')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 선수단으로</button>
 
         <div className={`${panel} p-4 mb-4`}>
+          {PLAYER_PORTRAITS[p.name] && (
+            <div className="flex justify-center mb-3">
+              <img
+                src={PLAYER_PORTRAITS[p.name]} alt={p.name}
+                className="w-20 h-20 rounded-full"
+                style={{ border: `2px solid ${POS_COLOR[p.position]}`, objectFit: 'cover' }}
+              />
+            </div>
+          )}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="font-bold text-lg">{p.name}</span>
@@ -3132,7 +3153,11 @@ export default function App() {
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-1.5"
                   style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[l.position]}` }}
                 >
-                  <img src="/player-face-blind.png" alt="" width="30" height="30" />
+                  {PLAYER_PORTRAITS[l.name] ? (
+                    <img src={PLAYER_PORTRAITS[l.name]} alt={l.name} className="w-full h-full rounded-full" style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <img src="/player-face-blind.png" alt="" width="30" height="30" />
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <PosBadge position={l.position} />
@@ -3198,7 +3223,11 @@ export default function App() {
                               className="w-12 h-12 rounded-full flex items-center justify-center mt-1"
                               style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
                             >
-                              <img src="/player-face-blind.png" alt="" width="22" height="22" />
+                              {PLAYER_PORTRAITS[p.name] ? (
+                                <img src={PLAYER_PORTRAITS[p.name]} alt={p.name} className="w-full h-full rounded-full" style={{ objectFit: 'cover' }} />
+                              ) : (
+                                <img src="/player-face-blind.png" alt="" width="22" height="22" />
+                              )}
                             </div>
                           )}
                           {stage >= 3 && <div className="font-bold text-sm mt-1">{p.name}</div>}
