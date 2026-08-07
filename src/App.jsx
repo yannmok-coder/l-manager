@@ -809,13 +809,13 @@ const BLUE_TOWERS = [
   { x: 14, y: 32 }, { x: 14, y: 54 }, { x: 14, y: 72 },
   { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
   { x: 74, y: 92 }, { x: 49, y: 90 }, { x: 34, y: 92 },
-  { x: 22, y: 84 }, { x: 26, y: 80 },
+  { x: 16, y: 85 }, { x: 19, y: 89 },
 ];
 const RED_TOWERS = [
   { x: 35, y: 12 }, { x: 56, y: 12 }, { x: 72, y: 12 },
   { x: 62, y: 44 }, { x: 66, y: 30 }, { x: 75, y: 25 },
   { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 28 },
-  { x: 80, y: 16 }, { x: 84, y: 20 },
+  { x: 83, y: 13 }, { x: 87, y: 17 },
 ];
 const LANES = ['top', 'mid', 'bot'];
 
@@ -4384,7 +4384,7 @@ export default function App() {
             <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.4" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
           ))}
           <polygon
-            points="14,87.5 17.5,91 14,94.5 10.5,91"
+            points="14,88.5 16.5,91 14,93.5 11.5,91"
             fill={s.objectives.nexusDestroyed === 'user' ? '#3A4152' : '#93C5FD'}
             fillOpacity={s.objectives.nexusDestroyed === 'user' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'user' ? '#5B6478' : '#EFF6FF'}
@@ -4392,7 +4392,7 @@ export default function App() {
             className={s.objectives.nexusDestroyed === 'user' ? '' : 'animate-pulse'}
           />
           <polygon
-            points="88,8.5 91.5,12 88,15.5 84.5,12"
+            points="88,9.5 90.5,12 88,14.5 85.5,12"
             fill={s.objectives.nexusDestroyed === 'ai' ? '#3A4152' : '#FCA5A5'}
             fillOpacity={s.objectives.nexusDestroyed === 'ai' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'ai' ? '#5B6478' : '#FEF2F2'}
