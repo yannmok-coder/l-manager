@@ -88,7 +88,10 @@ const OPPONENTS = [
 ];
 
 const DRAGON_TYPES = ['화염', '바다', '대지', '바람', '마법'];
-const APP_VERSION = 'v.0.030';
+const DRAGON_COLORS = {
+  화염: '#F97316', 바다: '#38BDF8', 대지: '#B08453', 바람: '#5EEAD4', 마법: '#E879F9', 장로: '#C084FC',
+};
+const APP_VERSION = 'v.0.031';
 const APP_LOGO_DATA_URI = 'data:image/webp;base64,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';
 const SINGLE_PULL_COST = 350;
 const MULTI_PULL_COUNT = 5;
@@ -800,18 +803,31 @@ const TICKS_PER_MIN = 12; // 1틱 = 5초, 12틱 = 1분
 const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀하는 데 걸리는 틱 수(약 20초)
 // 외곽(먼저 파괴)에서 본진 쪽(나중에 파괴) 순서로 정렬된 팀별 타워 좌표
 // 라인별 1차~3차 타워(9개) + 넥서스를 지키는 쌍둥이 타워(2개) = 총 11개
+// 각 배열은 [탑1,탑2,탑3, 미드1,미드2,미드3, 봇1,봇2,봇3, 쌍둥이1,쌍둥이2] 순서로,
+// 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
-  { x: 11, y: 32 }, { x: 56, y: 56 }, { x: 30, y: 90 },
-  { x: 10, y: 50 }, { x: 38, y: 70 }, { x: 50, y: 90 },
-  { x: 10, y: 70 }, { x: 22, y: 80 }, { x: 70, y: 90 },
+  { x: 10, y: 18 }, { x: 10, y: 40 }, { x: 10, y: 65 },
+  { x: 56, y: 56 }, { x: 38, y: 70 }, { x: 24, y: 80 },
+  { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 22, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
-  { x: 35, y: 9 }, { x: 44, y: 44 }, { x: 92, y: 68 },
-  { x: 58, y: 8 }, { x: 62, y: 30 }, { x: 92, y: 45 },
-  { x: 80, y: 8 }, { x: 78, y: 20 }, { x: 92, y: 25 },
+  { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 80, y: 8 },
+  { x: 44, y: 44 }, { x: 62, y: 30 }, { x: 76, y: 20 },
+  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 22 },
   { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
+const LANES = ['top', 'mid', 'bot'];
+
+// 타워 배열의 인덱스(0~10)가 현재 objectives 상태 기준으로 파괴되었는지 판정
+function isTowerDestroyed(sideObj, index) {
+  if (index < 9) {
+    const lane = LANES[Math.floor(index / 3)];
+    const tierInLane = index % 3; // 0,1,2 = 1차,2차,3차
+    return (sideObj.laneTowers ? sideObj.laneTowers[lane] : 0) > tierInLane;
+  }
+  return (sideObj.nexusTowers || 0) > (index - 9);
+}
 const ZONES = {
   topLane: { x: 0.26, y: 0.12 },
   midLane: { x: 0.5, y: 0.5 },
@@ -864,20 +880,15 @@ function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, t
       pos[key] = { x: clamp(clashPoint.x + randRange(-4, 4) / 100, 0.04, 0.96), y: clamp(clashPoint.y + randRange(-4, 4) / 100, 0.04, 0.96) };
     } else {
       const h = homes[key];
-      // 교전 중이 아닐 때는 각자 정해진 주기(선수마다 시점이 다르게 분산됨)로 본진에 복귀했다가 라인으로 돌아오는 모습을 보인다
+      // 교전 중이 아닐 때는 각자 정해진 주기(선수마다 시점이 다르게 분산됨)로 귀환한다.
+      // 이동해서 넥서스로 가는 게 아니라, 제자리에서 귀환모션(10초=2틱) 동안 머문 뒤 그 자리에서 사라지고 본진에서 나타난다.
       const cycleLen = 42;
       const seed = (p.id * 13) % cycleLen;
-      const cyclePos = ((tick + seed) % cycleLen) / cycleLen;
-      let baseWeight = 0;
-      if (cyclePos >= 0.55 && cyclePos < 0.68) baseWeight = (cyclePos - 0.55) / 0.13;
-      else if (cyclePos >= 0.68 && cyclePos < 0.80) baseWeight = 1;
-      else if (cyclePos >= 0.80 && cyclePos < 0.90) baseWeight = 1 - (cyclePos - 0.80) / 0.10;
-      if (baseWeight > 0 && tick != null) {
+      const cycleTick = (tick + seed) % cycleLen;
+      const atBase = tick != null && cycleTick >= 32 && cycleTick < 40;
+      if (atBase) {
         const fountain = BASE[side];
-        pos[key] = {
-          x: clamp(h.x + (fountain.x - h.x) * baseWeight + randRange(-4, 4) / 100, 0.04, 0.96),
-          y: clamp(h.y + (fountain.y - h.y) * baseWeight + randRange(-4, 4) / 100, 0.04, 0.96),
-        };
+        pos[key] = { x: clamp(fountain.x + randRange(-3, 3) / 100, 0.04, 0.96), y: clamp(fountain.y + randRange(-3, 3) / 100, 0.04, 0.96) };
       } else {
         pos[key] = { x: clamp(h.x + randRange(-5, 5) / 100, 0.04, 0.96), y: clamp(h.y + randRange(-5, 5) / 100, 0.04, 0.96) };
       }
@@ -904,8 +915,19 @@ function tickAdvance(prev) {
   const isFinalTick = tick >= prev.totalTicks;
   const tickRatio = tick / prev.totalTicks;
   const objectives = {
-    user: { towers: prev.objectives.user.towers, barons: prev.objectives.user.barons, dragons: [...prev.objectives.user.dragons] },
-    ai: { towers: prev.objectives.ai.towers, barons: prev.objectives.ai.barons, dragons: [...prev.objectives.ai.dragons] },
+    user: {
+      laneTowers: prev.objectives.user.laneTowers ? { ...prev.objectives.user.laneTowers } : { top: 0, mid: 0, bot: 0 },
+      nexusTowers: prev.objectives.user.nexusTowers || 0,
+      barons: prev.objectives.user.barons, dragons: [...prev.objectives.user.dragons],
+    },
+    ai: {
+      laneTowers: prev.objectives.ai.laneTowers ? { ...prev.objectives.ai.laneTowers } : { top: 0, mid: 0, bot: 0 },
+      nexusTowers: prev.objectives.ai.nexusTowers || 0,
+      barons: prev.objectives.ai.barons, dragons: [...prev.objectives.ai.dragons],
+    },
+    lastTowerTick: prev.objectives.lastTowerTick != null ? prev.objectives.lastTowerTick : -999,
+    aceAdvantage: prev.objectives.aceAdvantage || null,
+    nextDragonType: prev.objectives.nextDragonType || DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)],
     nextDragonTick: prev.objectives.nextDragonTick != null ? prev.objectives.nextDragonTick : 5 * TICKS_PER_MIN,
     nextBaronTick: prev.objectives.nextBaronTick != null ? prev.objectives.nextBaronTick : 20 * TICKS_PER_MIN,
   };
@@ -918,6 +940,9 @@ function tickAdvance(prev) {
     let chance = balancedChance(userPower, aiPower, userScore, aiScore);
     if (elderBuff) {
       chance = elderBuff.side === 'user' ? clamp(chance + 0.14, 0.05, 0.95) : clamp(chance - 0.14, 0.05, 0.95);
+    }
+    if (objectives.aceAdvantage && objectives.aceAdvantage.untilTick > tick) {
+      chance = objectives.aceAdvantage.side === 'user' ? clamp(chance + 0.4, 0.05, 0.97) : clamp(chance - 0.4, 0.05, 0.97);
     }
     return chance;
   }
@@ -1049,11 +1074,12 @@ function tickAdvance(prev) {
       }
     });
 
-    // 한타 내 상대 팀 전원(5명) 전멸 시 ACE 로그
+    // 한타 내 상대 팀 전원(5명) 전멸 시 ACE 로그 - 이후 한동안 오브젝트를 적극적으로 노린다
     const losingFullLineup = winSide === 'user' ? aiLineup : userLineup;
     const isAce = losingFullLineup.length === 5 && losingFullLineup.every((p) => tick < (p.respawnAtTick || 0));
     if (isAce) {
       log = [{ id: tick + '-' + Math.random(), text: `${winLabel} ACE!` }, ...log].slice(0, 6);
+      objectives.aceAdvantage = { side: winSide, untilTick: tick + 6 };
     }
 
     eventParticipants = [
@@ -1065,39 +1091,61 @@ function tickAdvance(prev) {
 
   function resolveObjective(type) {
     const side = Math.random() < sideChance() ? 'user' : 'ai';
+    if (type === '타워') {
+      if (tick - objectives.lastTowerTick < 4) return null; // 타워 파괴 후 최소 20초(4틱) 쿨다운
+      const so = objectives[side];
+      const incompleteLanes = LANES.filter((l) => so.laneTowers[l] < 3);
+      let label = null;
+      if (so.nexusTowers < 2) {
+        const anyLaneCleared = LANES.some((l) => so.laneTowers[l] >= 3);
+        const allLanesAtLeast2 = LANES.every((l) => so.laneTowers[l] >= 2);
+        const twinEligible = anyLaneCleared && (allLanesAtLeast2 || Math.random() < 0.01);
+        if (twinEligible && (incompleteLanes.length === 0 || Math.random() < 0.5)) {
+          so.nexusTowers += 1;
+          label = '쌍둥이 타워';
+        }
+      }
+      if (!label) {
+        if (incompleteLanes.length === 0) return null; // 더 파괴할 타워가 없음(쌍둥이도 이미 게이트 조건 미충족)
+        const lane = incompleteLanes[randRange(0, incompleteLanes.length - 1)];
+        const tier = so.laneTowers[lane] + 1;
+        so.laneTowers[lane] += 1;
+        const laneLabel = { top: '탑', mid: '미드', bot: '봇' }[lane];
+        label = `${laneLabel} ${tier}차 타워`;
+      }
+      objectives.lastTowerTick = tick;
+      if (side === 'user') userScore += 3; else aiScore += 3;
+      return { side, objLogLabel: label, isElder: false };
+    }
     if (side === 'user') userScore += 3; else aiScore += 3;
     let objLogLabel = type;
     let isElder = false;
-    if (type === '타워') {
-      objectives[side].towers += 1;
-    } else if (type === '바론') {
+    if (type === '바론') {
       objectives[side].barons += 1;
       objectives.nextBaronTick = tick + 6 * TICKS_PER_MIN;
     } else if (type === '드래곤') {
       objectives.nextDragonTick = tick + 5 * TICKS_PER_MIN;
       const elderReady = Math.max(objectives.user.dragons.length, objectives.ai.dragons.length) >= 4;
-      if (elderReady) {
-        objectives[side].dragons.push('장로');
-        objLogLabel = '장로 드래곤';
-        isElder = true;
-        elderBuff = { side, ticksLeft: 3 * TICKS_PER_MIN };
-      } else {
-        const dType = DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)];
-        objectives[side].dragons.push(dType);
-        objLogLabel = `${dType} 드래곤`;
-      }
+      const dType = elderReady ? '장로' : (objectives.nextDragonType || DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)]);
+      objectives[side].dragons.push(dType);
+      objLogLabel = elderReady ? '장로 드래곤' : `${dType} 드래곤`;
+      isElder = elderReady;
+      if (elderReady) elderBuff = { side, ticksLeft: 3 * TICKS_PER_MIN };
+      // 다음에 등장할 드래곤 유형을 미리 정해둔다 (등장과 동시에 맵 아이콘 색상에 반영하기 위함)
+      objectives.nextDragonType = DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)];
     }
     return { side, objLogLabel, isElder };
   }
 
-  // 경기 진행률에 따른 목표 페이스 (85% 지점까지 최소 기준 도달을 목표로 완만하게 보정)
+  // 경기 진행률에 따른 목표 페이스 (85% 지점까지 최소 기준 도달을 목표로 완만하게 보정) - 라인 타워(팀당 최대 9개)만 대상, 쌍둥이 타워는 페이스 보정 대상이 아니다
   const paceRatio = Math.min(1, tickRatio / 0.85);
   const targetDragons = 3 * paceRatio;
-  const targetLeaderTowers = 8 * paceRatio;
+  const targetLeaderLaneTowers = 7 * paceRatio;
   const totalDragonsSoFar = objectives.user.dragons.length + objectives.ai.dragons.length;
-  const leaderTowersSoFar = Math.max(objectives.user.towers, objectives.ai.towers);
+  const laneTowerCount = (o) => LANES.reduce((s, l) => s + o.laneTowers[l], 0);
+  const leaderTowersSoFar = Math.max(laneTowerCount(objectives.user), laneTowerCount(objectives.ai));
   const dragonBehind = totalDragonsSoFar < targetDragons;
-  const towerBehind = leaderTowersSoFar < targetLeaderTowers;
+  const towerBehind = leaderTowersSoFar < targetLeaderLaneTowers;
   const nearEnd = tick >= prev.totalTicks - 2 * TICKS_PER_MIN;
 
   if (isFinalTick) {
@@ -1116,11 +1164,18 @@ function tickAdvance(prev) {
         if (side === 'user') userScore += 3; else aiScore += 3;
       }
     }
-    const leaderSide = objectives.user.towers >= objectives.ai.towers ? 'user' : 'ai';
-    if (objectives[leaderSide].towers < 8) {
-      const need = 8 - objectives[leaderSide].towers;
-      objectives[leaderSide].towers += need;
-      if (leaderSide === 'user') userScore += need * 3; else aiScore += need * 3;
+    const leaderSide = laneTowerCount(objectives.user) >= laneTowerCount(objectives.ai) ? 'user' : 'ai';
+    let leaderLaneCount = laneTowerCount(objectives[leaderSide]);
+    if (leaderLaneCount < 7) {
+      let need = 7 - leaderLaneCount;
+      // 라인 순서(1차→2차→3차)를 지키며 채운다 - 한 라인이 다 차면 다음 라인으로
+      while (need > 0) {
+        const lane = LANES.find((l) => objectives[leaderSide].laneTowers[l] < 3);
+        if (!lane) break;
+        objectives[leaderSide].laneTowers[lane] += 1;
+        need -= 1;
+        if (leaderSide === 'user') userScore += 3; else aiScore += 3;
+      }
     }
 
     const loserSide = userScore <= aiScore ? 'user' : 'ai';
@@ -1135,10 +1190,12 @@ function tickAdvance(prev) {
       const ap = aiLineup.reduce((s, p) => s + p.overall, 0);
       finalWin = up === ap ? Math.random() < 0.5 : up > ap;
     }
-    // 승부가 정해지면 패배 팀의 쌍둥이 타워를 포함한 전체 타워가 무너지고, 넥서스가 파괴된다
+    // 넥서스 파괴 엔딩은 항상 나온다 - 자연 진행으로 아직 못 도달했다면 마지막에 나머지 라인/쌍둥이 타워를 마저 밀어붙인다
     const nexusLoserSide = finalWin ? 'ai' : 'user';
-    const nexusTowerCount = nexusLoserSide === 'ai' ? RED_TOWERS.length : BLUE_TOWERS.length;
-    objectives[nexusLoserSide].towers = nexusTowerCount;
+    if (objectives[nexusLoserSide].nexusTowers < 2) {
+      LANES.forEach((l) => { objectives[nexusLoserSide].laneTowers[l] = 3; });
+      objectives[nexusLoserSide].nexusTowers = 2;
+    }
     objectives.nexusDestroyed = nexusLoserSide;
     const nexusWinnerLabel = finalWin ? '우리 팀' : '상대 팀';
     log = [{ id: tick + '-nexus', text: `${nexusWinnerLabel}이(가) 쌍둥이 타워를 무너뜨리고 넥서스를 파괴했습니다! 경기 종료!` }, ...log].slice(0, 6);
@@ -1146,6 +1203,8 @@ function tickAdvance(prev) {
   }
 
   const totalBarons = objectives.user.barons + objectives.ai.barons;
+  const aceAdvantageActive = objectives.aceAdvantage && objectives.aceAdvantage.untilTick > tick;
+  const objectiveRushMult = aceAdvantageActive ? 4 : 1; // ACE 직후에는 오브젝트를 적극적으로 노린다
   // 판정이 분당 1회에서 틱당(5초당) 1회로 12배 잦아졌으므로, 분당 확률을 틱당 확률로 환산(÷12)한다
   const skirmishChance = 0.65 / TICKS_PER_MIN;
   const towerAvailable = tick >= 5 * TICKS_PER_MIN;
@@ -1153,15 +1212,17 @@ function tickAdvance(prev) {
   if (towerAvailable) {
     towerChance = (0.20 + tickRatio * 0.10) / TICKS_PER_MIN;
     if (towerBehind) towerChance += (nearEnd ? 0.45 : 0.20) / TICKS_PER_MIN;
+    towerChance *= objectiveRushMult;
   }
   const dragonAvailable = tick >= objectives.nextDragonTick;
   let dragonChance = 0;
   if (dragonAvailable) {
     dragonChance = (0.07 + tickRatio * 0.05) / TICKS_PER_MIN;
     if (dragonBehind) dragonChance += (nearEnd ? 0.35 : 0.15) / TICKS_PER_MIN;
+    dragonChance *= objectiveRushMult;
   }
   const baronAvailable = tick >= objectives.nextBaronTick;
-  const baronChance = (baronAvailable && totalBarons < 2) ? 0.05 / TICKS_PER_MIN : 0;
+  const baronChance = (baronAvailable && totalBarons < 2) ? (0.05 / TICKS_PER_MIN) * objectiveRushMult : 0;
   const heraldChance = tickRatio < 0.55 ? 0.05 / TICKS_PER_MIN : 0;
 
   const roll = Math.random();
@@ -1170,8 +1231,11 @@ function tickAdvance(prev) {
   if (roll < (acc += skirmishChance)) {
     resolveTeamfight();
   } else if (roll < (acc += towerChance)) {
-    const { side, objLogLabel } = resolveObjective('타워');
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 처치했습니다!` }, ...log].slice(0, 6);
+    const towerResult = resolveObjective('타워');
+    if (towerResult) {
+      const { side, objLogLabel } = towerResult;
+      log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 파괴했습니다!` }, ...log].slice(0, 6);
+    }
   } else if (roll < (acc += dragonChance)) {
     const { side, objLogLabel, isElder } = resolveObjective('드래곤');
     const flavor = isElder ? `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 치열한 한타 끝에 ${objLogLabel}을(를) 처치했습니다! 승리에 대한 확신이 차오릅니다!` : `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 드래곤 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!`;
@@ -2171,12 +2235,17 @@ export default function App() {
     const userFinal = userLineup.map((u) => applyChampionMastery({ ...u, champion: champAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
     const aiAssignment = assignPicksToPositions(draft.aiPicks);
     const aiFinal = opponentLineup.map((a) => applyChampionMastery({ ...a, champion: aiAssignment[a.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
-    const totalTicks = randRange(21, 34) * TICKS_PER_MIN; // 1틱 = 5초, 경기 길이는 그대로 21~34분
+    const totalTicks = randRange(21, 50) * TICKS_PER_MIN; // 1틱 = 5초, 경기 길이 21~50분
     setSim({
       tick: 0, totalTicks, userLineup: userFinal, aiLineup: aiFinal,
       userScore: 0, aiScore: 0, log: [], finished: false,
       positions: computePositions(userFinal, aiFinal, [], null, 0), eventParticipants: [],
-      objectives: { user: { towers: 0, barons: 0, dragons: [] }, ai: { towers: 0, barons: 0, dragons: [] }, nextDragonTick: 5 * TICKS_PER_MIN, nextBaronTick: 20 * TICKS_PER_MIN, nexusDestroyed: null },
+      objectives: {
+        user: { laneTowers: { top: 0, mid: 0, bot: 0 }, nexusTowers: 0, barons: 0, dragons: [] },
+        ai: { laneTowers: { top: 0, mid: 0, bot: 0 }, nexusTowers: 0, barons: 0, dragons: [] },
+        lastTowerTick: -999, nextDragonTick: 5 * TICKS_PER_MIN, nextBaronTick: 20 * TICKS_PER_MIN, nexusDestroyed: null,
+        nextDragonType: DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)],
+      },
       elderBuff: null,
       finalWin: null,
       killCap: randRange(13, 43),
@@ -3922,7 +3991,7 @@ export default function App() {
       const buffed = s.elderBuff && s.elderBuff.side === side;
       return (
         <div className={`flex items-center gap-2 text-xs mt-1 lm-muted ${align}`}>
-          <span>🗼{o.towers}</span>
+          <span>🗼{LANES.reduce((sum, l) => sum + o.laneTowers[l], 0) + o.nexusTowers}</span>
           <span title={o.dragons.join(', ')}>🐉{o.dragons.length}{o.dragons.length > 0 && ` (${o.dragons.join(',')})`}</span>
           <span>💀{o.barons}</span>
           {buffed && <span className="font-bold" style={{ color: '#C084FC' }}>👑장로버프</span>}
@@ -4009,10 +4078,10 @@ export default function App() {
         <div className="absolute inset-0" style={{ clipPath: 'polygon(100% 45%, 100% 0%, 55% 0%)', background: 'rgba(239,68,68,0.12)' }} />
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
           <image href="/map-background.png" x="0" y="0" width="100" height="100" />
-          {BLUE_TOWERS.map((pt, i) => i >= s.objectives.ai.towers && (
+          {BLUE_TOWERS.map((pt, i) => !isTowerDestroyed(s.objectives.ai, i) && (
             <circle key={'bt' + i} cx={pt.x} cy={pt.y} r="1.9" fill="#3B82F6" fillOpacity="0.85" stroke="#BFDBFE" strokeWidth="0.5" />
           ))}
-          {RED_TOWERS.map((pt, i) => i >= s.objectives.user.towers && (
+          {RED_TOWERS.map((pt, i) => !isTowerDestroyed(s.objectives.user, i) && (
             <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.9" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
           ))}
           <polygon points="10,89.3 12.3,93 10,96.7 7.7,93" fill="#60CFFF" fillOpacity="0.95" stroke="#DBF3FF" strokeWidth="0.3" />
@@ -4033,22 +4102,34 @@ export default function App() {
             strokeWidth="0.4"
             className={s.objectives.nexusDestroyed === 'ai' ? '' : 'animate-pulse'}
           />
-          <polygon
-            points={`${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 - 2.6} ${ZONES.baronPit.x * 100 + 2.6},${ZONES.baronPit.y * 100} ${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 + 2.6} ${ZONES.baronPit.x * 100 - 2.6},${ZONES.baronPit.y * 100}`}
-            fill="#C084FC" fillOpacity="0.85" stroke="#F3E8FF" strokeWidth="0.3" className="animate-pulse"
-          />
-          <polygon
-            points={`${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 - 2.6} ${ZONES.dragonPit.x * 100 + 2.6},${ZONES.dragonPit.y * 100} ${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 + 2.6} ${ZONES.dragonPit.x * 100 - 2.6},${ZONES.dragonPit.y * 100}`}
-            fill="#FB923C" fillOpacity="0.85" stroke="#FFEDD5" strokeWidth="0.3" className="animate-pulse"
-          />
+          {s.tick >= s.objectives.nextBaronTick && (s.objectives.user.barons + s.objectives.ai.barons) < 2 && (
+            <polygon
+              points={`${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 - 2.6} ${ZONES.baronPit.x * 100 + 2.6},${ZONES.baronPit.y * 100} ${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 + 2.6} ${ZONES.baronPit.x * 100 - 2.6},${ZONES.baronPit.y * 100}`}
+              fill="#C084FC" fillOpacity="0.85" stroke="#F3E8FF" strokeWidth="0.3" className="animate-pulse"
+            />
+          )}
+          {s.tick >= s.objectives.nextDragonTick && (() => {
+            const isElderNext = Math.max(s.objectives.user.dragons.length, s.objectives.ai.dragons.length) >= 4;
+            const dragonColor = DRAGON_COLORS[isElderNext ? '장로' : s.objectives.nextDragonType] || '#FB923C';
+            return (
+              <polygon
+                points={`${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 - 2.6} ${ZONES.dragonPit.x * 100 + 2.6},${ZONES.dragonPit.y * 100} ${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 + 2.6} ${ZONES.dragonPit.x * 100 - 2.6},${ZONES.dragonPit.y * 100}`}
+                fill={dragonColor} fillOpacity="0.85" stroke="#FFF7ED" strokeWidth="0.3" className="animate-pulse"
+              />
+            );
+          })()}
         </svg>
         {[[0.16, 0.26, 11], [0.32, 0.15, 9], [0.24, 0.36, 8], [0.66, 0.3, 10], [0.8, 0.6, 11], [0.7, 0.4, 8], [0.2, 0.72, 12], [0.6, 0.6, 9], [0.12, 0.58, 8], [0.86, 0.2, 8]].map(([bx, by, sz], bi) => (
           <div key={bi} className="absolute rounded-full" style={{ left: `${bx * 100}%`, top: `${by * 100}%`, width: `${sz}%`, height: `${sz}%`, background: 'radial-gradient(circle, rgba(52,180,100,0.7), rgba(52,180,100,0.15) 65%, transparent 85%)', border: '1px solid rgba(74,222,128,0.35)' }} />
         ))}
         <div className="absolute rounded-full" style={{ left: '16%', top: '58%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '76%', top: '38%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
-        <div className="absolute rounded-full" style={{ left: `${(ZONES.baronPit.x - 0.07) * 100}%`, top: `${(ZONES.baronPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(192,132,252,0.5), transparent 75%)' }} />
-        <div className="absolute rounded-full" style={{ left: `${(ZONES.dragonPit.x - 0.07) * 100}%`, top: `${(ZONES.dragonPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(251,146,60,0.5), transparent 75%)' }} />
+        {s.tick >= s.objectives.nextBaronTick && (s.objectives.user.barons + s.objectives.ai.barons) < 2 && (
+          <div className="absolute rounded-full" style={{ left: `${(ZONES.baronPit.x - 0.07) * 100}%`, top: `${(ZONES.baronPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(192,132,252,0.5), transparent 75%)' }} />
+        )}
+        {s.tick >= s.objectives.nextDragonTick && (
+          <div className="absolute rounded-full" style={{ left: `${(ZONES.dragonPit.x - 0.07) * 100}%`, top: `${(ZONES.dragonPit.y - 0.07) * 100}%`, width: '14%', height: '14%', background: 'radial-gradient(circle, rgba(251,146,60,0.5), transparent 75%)' }} />
+        )}
         <div className="absolute rounded-full" style={{ left: '1%', top: '85%', width: '18%', height: '18%', background: 'radial-gradient(circle, rgba(56,189,248,0.7), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '81%', top: '-3%', width: '18%', height: '18%', background: 'radial-gradient(circle, rgba(239,68,68,0.7), transparent 75%)' }} />
         {s.userLineup.map((p, i) => {
