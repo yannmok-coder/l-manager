@@ -1915,6 +1915,52 @@ export default function App() {
     }
   }
 
+  function handleStartTestMatch() {
+    // 무작위 상대 구단을 골라 로스터 설정·전력분석·밴픽 단계 없이 곧바로 시뮬레이션을 시작한다 (전적/성장에 반영되지 않는 테스트 경기)
+    const opp = OPPONENTS[randRange(0, OPPONENTS.length - 1)];
+    const oppLineup = generateOpponentLineup(opp.power, '1군', opp.name);
+
+    const lineup = POSITIONS.map((pos) => {
+      const posPlayers = game.players.filter((p) => p.position === pos);
+      const starter = posPlayers.find((p) => p.tier === '1군') || [...posPlayers].sort((a, b) => b.overall - a.overall)[0];
+      return { id: starter.id, name: starter.name, position: pos, overall: starter.overall, champion: null, kills: 0, deaths: 0, assists: 0 };
+    });
+
+    const userAssignment = {};
+    const aiAssignment = {};
+    POSITIONS.forEach((pos) => {
+      const pool = CHAMPIONS[pos];
+      userAssignment[pos] = pool[randRange(0, pool.length - 1)];
+      aiAssignment[pos] = pool[randRange(0, pool.length - 1)];
+    });
+
+    const userFinal = lineup.map((u) => applyChampionMastery({ ...u, champion: userAssignment[u.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
+    const aiFinal = oppLineup.map((a) => applyChampionMastery({ ...a, champion: aiAssignment[a.position], kills: 0, deaths: 0, assists: 0, damage: 0, respawnAtTick: 0 }));
+    const totalTicks = randRange(21, 50) * TICKS_PER_MIN;
+
+    setSelectedOpponent(opp);
+    setOpponentLineup(oppLineup);
+    setUserLineup(lineup);
+    setSim({
+      tick: 0, totalTicks, userLineup: userFinal, aiLineup: aiFinal,
+      userScore: 0, aiScore: 0, log: [], finished: false,
+      positions: computePositions(userFinal, aiFinal, [], null, 0), eventParticipants: [],
+      objectives: {
+        user: { laneTowers: { top: 0, mid: 0, bot: 0 }, nexusTowers: 0, barons: 0, dragons: [] },
+        ai: { laneTowers: { top: 0, mid: 0, bot: 0 }, nexusTowers: 0, barons: 0, dragons: [] },
+        lastTowerTick: -999, nextDragonTick: 5 * TICKS_PER_MIN, nextBaronTick: 20 * TICKS_PER_MIN, nexusDestroyed: null,
+        nextDragonType: DRAGON_TYPES[randRange(0, DRAGON_TYPES.length - 1)],
+      },
+      elderBuff: null,
+      finalWin: null,
+      killCap: randRange(13, 43),
+      capBurstUsed: false,
+      pendingClash: null,
+      isTest: true,
+    });
+    setScreen('sim');
+  }
+
   function handleChallenge(opp, tier) {
     const chosenTier = tier || '1군';
     const power = chosenTier === '2군' ? (opp.power2 || Math.round(opp.power * 0.7)) : opp.power;
@@ -2423,6 +2469,26 @@ export default function App() {
 
   function finalizeMatch() {
     const wasWin = sim.finalWin;
+    if (sim.isTest) {
+      // 테스트 경기: 성장, 전적, 경기 기록, 구단 상태 전부 건드리지 않고 결과만 보여준다
+      const details = sim.userLineup.map((starter) => ({
+        id: starter.id, name: starter.name, position: starter.position, tier: starter.tier,
+        kills: starter.kills, deaths: starter.deaths, assists: starter.assists, champion: starter.champion, damage: starter.damage || 0,
+        expGained: 0, leveledUp: false, newLevel: starter.level, valueBefore: starter.value, valueAfter: starter.value,
+      }));
+      const aiDetails = sim.aiLineup.map((a) => ({
+        id: a.id, name: a.name, position: a.position, champion: a.champion,
+        kills: a.kills, deaths: a.deaths, assists: a.assists, damage: a.damage || 0,
+      }));
+      setLastResult({
+        win: wasWin, userScore: sim.userScore, aiScore: sim.aiScore, playTime: Math.round(sim.tick / TICKS_PER_MIN),
+        opponentName: selectedOpponent ? selectedOpponent.name : '테스트 상대', details, aiDetails,
+        oldClubValue: game.club.value, newClubValue: game.club.value,
+        isLeague: false, seriesDecided: false, seriesWon: null, seriesTally: null, isTest: true,
+      });
+      setScreen('result');
+      return;
+    }
     const oldClubValue = game.club.value;
     const details = [];
     const newPlayers = game.players.map((p) => {
@@ -2741,6 +2807,13 @@ export default function App() {
             <div className="text-xs mt-1 lm-muted">게임 설명 보기</div>
           </button>
         </div>
+        <button onClick={handleStartTestMatch} className={`${panel} lm-panel-hover w-full p-4 text-left transition-colors flex items-center justify-between mt-3`}>
+          <div>
+            <div className="font-bold text-sm">경기 테스트</div>
+            <div className="text-xs mt-0.5 lm-muted">무작위 상대와 바로 시뮬레이션 (전적·성장에 반영되지 않음)</div>
+          </div>
+          <ChevronRight size={16} />
+        </button>
         <button onClick={() => setConfirmDialog({ message: '정말로 구단을 초기화하고 새로 시작하시겠습니까? 이 작업은 되돌릴 수 없습니다.', onConfirm: handleReset })} className="mt-8 text-xs flex items-center gap-1 lm-dim lm-hover-muted">
           <RotateCcw size={12} /> 구단 초기화하고 새로 시작
         </button>
@@ -4304,6 +4377,9 @@ export default function App() {
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-8">
         <div className="text-center mb-6">
+          {r.isTest && (
+            <div className="inline-block text-xs font-bold px-2.5 py-1 rounded mb-2" style={{ background: '#3A3220', color: '#D9AE55' }}>테스트 경기 (전적·성장 미반영)</div>
+          )}
           <div className="grid grid-cols-3 items-center mb-2">
             <div className="text-left">
               <div className="font-bold truncate">{game.club.name}</div>
@@ -4318,7 +4394,9 @@ export default function App() {
               <div className="text-sm font-bold" style={{ color: !r.win ? '#2DD4C6' : '#EF4444' }}>{!r.win ? '승리' : '패배'}</div>
             </div>
           </div>
-          <div className="text-sm mt-2" style={{ color: delta >= 0 ? '#2DD4C6' : '#EF4444' }}>구단 가치 {delta >= 0 ? '+' : ''}{delta.toLocaleString()} P</div>
+          {!r.isTest && (
+            <div className="text-sm mt-2" style={{ color: delta >= 0 ? '#2DD4C6' : '#EF4444' }}>구단 가치 {delta >= 0 ? '+' : ''}{delta.toLocaleString()} P</div>
+          )}
         </div>
 
         <div className={`${panel} p-4 mb-4`}>
