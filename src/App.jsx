@@ -807,14 +807,14 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
   { x: 10, y: 18 }, { x: 10, y: 40 }, { x: 10, y: 65 },
-  { x: 52, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
+  { x: 48, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
   { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 22, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
   { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 80, y: 8 },
-  { x: 52, y: 44 }, { x: 66, y: 30 }, { x: 80, y: 20 },
-  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 22 },
+  { x: 56, y: 44 }, { x: 66, y: 30 }, { x: 77, y: 23 },
+  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 25 },
   { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
 const LANES = ['top', 'mid', 'bot'];
@@ -838,8 +838,8 @@ const ZONES = {
   botJungle: { x: 0.78, y: 0.58 },
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
-  baronPit: { x: 0.30, y: 0.32 },
-  dragonPit: { x: 0.70, y: 0.68 },
+  baronPit: { x: 0.33, y: 0.32 },
+  dragonPit: { x: 0.70, y: 0.71 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다.
 // 상대 진영 깊숙한 곳(본진 인근)은 그쪽 라인의 3차 타워를 2개 이상 파괴해야만 진입할 수 있다(정글 지역은 예외로 항상 가능).
@@ -3664,6 +3664,7 @@ export default function App() {
                           className="absolute inset-0 rounded-xl flex flex-col items-center justify-center gap-1"
                           style={{ backfaceVisibility: 'hidden', background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: '1px solid #C89B3C' }}
                         >
+                          <img src={APP_LOGO_DATA_URI} alt="롤매니저 로고" width="48" height="48" style={{ objectFit: 'contain' }} />
                           <div className="text-xl" style={{ ...displayFont, color: '#D9AE55' }}>롤매니저</div>
                           <div className="text-xs lm-dim">탭하여 공개</div>
                         </div>
