@@ -806,14 +806,14 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 각 배열은 [탑1,탑2,탑3, 미드1,미드2,미드3, 봇1,봇2,봇3, 쌍둥이1,쌍둥이2] 순서로,
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
-  { x: 10, y: 22 }, { x: 10, y: 44 }, { x: 10, y: 68 },
+  { x: 10, y: 25 }, { x: 10, y: 47 }, { x: 10, y: 68 },
   { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
-  { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 22, y: 88 },
+  { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 26, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
   { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 76, y: 8 },
-  { x: 60, y: 44 }, { x: 66, y: 30 }, { x: 77, y: 23 },
+  { x: 62, y: 44 }, { x: 66, y: 30 }, { x: 75, y: 25 },
   { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 28 },
   { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
@@ -838,7 +838,7 @@ const ZONES = {
   botJungle: { x: 0.78, y: 0.58 },
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
-  baronPit: { x: 0.36, y: 0.32 },
+  baronPit: { x: 0.38, y: 0.32 },
   dragonPit: { x: 0.70, y: 0.71 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다.
@@ -1056,9 +1056,18 @@ function tickAdvance(prev) {
   }
 
   function planTeamfight(preSelected) {
-    const selection = preSelected || selectFightParticipants();
-    if (!selection) return null;
-    const { userParticipants, aiParticipants, isCapBurst } = selection;
+    let userParticipants, aiParticipants, isCapBurst;
+    if (preSelected) {
+      // preSelected는 게더링이 시작된 시점(이전 틱)에 골라둔 것이라 그 안의 선수 객체가 낡았을 수 있다.
+      // 인덱스만 취해 이번 틱의 실제 userLineup/aiLineup 객체로 다시 연결한다.
+      userParticipants = preSelected.userParticipants.map(({ i }) => ({ p: userLineup[i], i }));
+      aiParticipants = preSelected.aiParticipants.map(({ i }) => ({ p: aiLineup[i], i }));
+      isCapBurst = preSelected.isCapBurst;
+    } else {
+      const sel = selectFightParticipants();
+      if (!sel) return null;
+      ({ userParticipants, aiParticipants, isCapBurst } = sel);
+    }
     const remainingBudget = killCap - currentTotalKills();
     if (remainingBudget <= 0) return null;
     const userCount = userParticipants.length, aiCount = aiParticipants.length;
@@ -1099,29 +1108,36 @@ function tickAdvance(prev) {
     if (isCapBurst) capBurstUsed = true;
 
     const victims = sample(loseParticipants, killsThisFight);
-    // 서포터는 상대적으로 킬 확률을 낮게, 그 외 포지션은 동일 가중치로 킬러를 뽑는다
-    function pickKiller(participants) {
-      const weights = participants.map(({ p }) => (p.position === 'SUP' ? 0.2 : 1));
+    // 서포터는 상대적으로 킬 확률을 낮게, 그 외 포지션은 동일 가중치로 킬러를 뽑는다 (인덱스만 반환)
+    function pickKillerIndex() {
+      const weights = winParticipants.map(({ p }) => (p.position === 'SUP' ? 0.2 : 1));
       const total = weights.reduce((a, b) => a + b, 0);
       let roll = Math.random() * total;
-      for (let idx = 0; idx < participants.length; idx++) {
-        if (roll < weights[idx]) return participants[idx].p;
+      for (let idx = 0; idx < winParticipants.length; idx++) {
+        if (roll < weights[idx]) return winParticipants[idx].i;
         roll -= weights[idx];
       }
-      return participants[participants.length - 1].p;
+      return winParticipants[winParticipants.length - 1].i;
     }
-    const victimPlans = victims.map(({ p: victim }) => ({ victim, killer: pickKiller(winParticipants) }));
+    const victimPlans = victims.map(({ i: victimIndex }) => ({ victimIndex, killerIndex: pickKillerIndex() }));
 
     return {
-      winSide, winParticipants, loseParticipants, victimPlans, killsThisFight,
+      winSide, loseSide: winSide === 'user' ? 'ai' : 'user', killsThisFight,
+      winIndices: winParticipants.map(({ i }) => i),
+      victimPlans,
       userKeys: userParticipants.map(({ i }) => 'user-' + i),
       aiKeys: aiParticipants.map(({ i }) => 'ai-' + i),
     };
   }
 
-  // 계획된 킬 중 하나를 실제로 적용(사망/리스폰 타이머/로그/어시스트)
+  // 계획된 킬 중 하나를 실제로 적용(사망/리스폰 타이머/로그/어시스트) - 항상 "이번 틱"의 실제 라인업 배열에서 대상을 다시 조회한다
   function applyOneKill(plan, index, atTick) {
-    const { victim, killer } = plan.victimPlans[index];
+    const { victimIndex, killerIndex } = plan.victimPlans[index];
+    const loseLineup = plan.loseSide === 'user' ? userLineup : aiLineup;
+    const winLineup = plan.winSide === 'user' ? userLineup : aiLineup;
+    const victim = loseLineup[victimIndex];
+    const killer = winLineup[killerIndex];
+    if (!victim || !killer) return;
     const gameMinutes = atTick / TICKS_PER_MIN;
     const respawnSeconds = gameMinutes < 10 ? 10 : Math.min(55, 10 + (gameMinutes - 10) * 4);
     const respawnDuration = Math.max(1, Math.round(respawnSeconds / 5));
@@ -1129,8 +1145,10 @@ function tickAdvance(prev) {
     victim.respawnAtTick = atTick + respawnDuration;
     killer.kills++;
     log = [{ id: atTick + '-' + Math.random(), text: `${killer.name}(${killer.champion})님이 ${victim.name}(${victim.champion})님을 처치했습니다!` }, ...log].slice(0, 6);
-    plan.winParticipants.forEach(({ p: assistCandidate }) => {
-      if (assistCandidate === killer) return;
+    plan.winIndices.forEach((wi) => {
+      if (wi === killerIndex) return;
+      const assistCandidate = winLineup[wi];
+      if (!assistCandidate) return;
       const assistChance = assistCandidate.position === 'SUP' ? 0.85 : 0.5;
       if (Math.random() < assistChance) assistCandidate.assists++;
     });
@@ -1141,11 +1159,13 @@ function tickAdvance(prev) {
     const { winSide, killsThisFight } = plan;
     if (winSide === 'user') userScore += killsThisFight * 2; else aiScore += killsThisFight * 2;
     const winLabel = winSide === 'user' ? '우리 팀' : '상대 팀';
+    const winLineup = winSide === 'user' ? userLineup : aiLineup;
     const killTally = new Map();
-    plan.victimPlans.forEach(({ killer }) => killTally.set(killer, (killTally.get(killer) || 0) + 1));
+    plan.victimPlans.forEach(({ killerIndex }) => killTally.set(killerIndex, (killTally.get(killerIndex) || 0) + 1));
     const multiKillLabels = { 2: '더블킬', 3: '트리플킬', 4: '쿼드라킬', 5: '펜타킬' };
-    killTally.forEach((count, killerPlayer) => {
-      if (multiKillLabels[count]) {
+    killTally.forEach((count, killerIdx) => {
+      const killerPlayer = winLineup[killerIdx];
+      if (multiKillLabels[count] && killerPlayer) {
         log = [{ id: tick + '-' + Math.random(), text: `${killerPlayer.champion}이(가) ${multiKillLabels[count]}!` }, ...log].slice(0, 6);
       }
     });
