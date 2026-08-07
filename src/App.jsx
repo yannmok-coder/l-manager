@@ -808,14 +808,14 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 const BLUE_TOWERS = [
   { x: 10, y: 28 }, { x: 10, y: 50 }, { x: 10, y: 68 },
   { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
-  { x: 70, y: 90 }, { x: 49, y: 90 }, { x: 30, y: 88 },
-  { x: 16, y: 85 }, { x: 10, y: 78 },
+  { x: 74, y: 90 }, { x: 53, y: 90 }, { x: 34, y: 88 },
+  { x: 20, y: 85 }, { x: 14, y: 78 },
 ];
 const RED_TOWERS = [
-  { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 76, y: 8 },
+  { x: 35, y: 12 }, { x: 60, y: 12 }, { x: 76, y: 12 },
   { x: 62, y: 44 }, { x: 66, y: 30 }, { x: 75, y: 25 },
   { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 28 },
-  { x: 84, y: 15 }, { x: 90, y: 22 },
+  { x: 81, y: 12 }, { x: 90, y: 22 },
 ];
 const LANES = ['top', 'mid', 'bot'];
 
@@ -4333,7 +4333,7 @@ export default function App() {
             className={s.objectives.nexusDestroyed === 'user' ? '' : 'animate-pulse'}
           />
           <polygon
-            points="88,6.5 91.5,10 88,13.5 84.5,10"
+            points="88,8.5 91.5,12 88,15.5 84.5,12"
             fill={s.objectives.nexusDestroyed === 'ai' ? '#3A4152' : '#FCA5A5'}
             fillOpacity={s.objectives.nexusDestroyed === 'ai' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'ai' ? '#5B6478' : '#FEF2F2'}
