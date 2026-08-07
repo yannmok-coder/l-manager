@@ -806,9 +806,9 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 각 배열은 [탑1,탑2,탑3, 미드1,미드2,미드3, 봇1,봇2,봇3, 쌍둥이1,쌍둥이2] 순서로,
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
-  { x: 10, y: 25 }, { x: 10, y: 47 }, { x: 10, y: 68 },
+  { x: 10, y: 28 }, { x: 10, y: 50 }, { x: 10, y: 68 },
   { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
-  { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 26, y: 88 },
+  { x: 70, y: 90 }, { x: 49, y: 90 }, { x: 30, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
@@ -839,7 +839,7 @@ const ZONES = {
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
   baronPit: { x: 0.38, y: 0.32 },
-  dragonPit: { x: 0.70, y: 0.71 },
+  dragonPit: { x: 0.68, y: 0.73 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다.
 // 상대 진영 깊숙한 곳(본진 인근)은 그쪽 라인의 3차 타워를 2개 이상 파괴해야만 진입할 수 있다(정글 지역은 예외로 항상 가능).
@@ -4325,7 +4325,7 @@ export default function App() {
             <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.4" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
           ))}
           <polygon
-            points="12,87.5 15.5,91 12,94.5 8.5,91"
+            points="14,87.5 17.5,91 14,94.5 10.5,91"
             fill={s.objectives.nexusDestroyed === 'user' ? '#3A4152' : '#93C5FD'}
             fillOpacity={s.objectives.nexusDestroyed === 'user' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'user' ? '#5B6478' : '#EFF6FF'}
@@ -4333,7 +4333,7 @@ export default function App() {
             className={s.objectives.nexusDestroyed === 'user' ? '' : 'animate-pulse'}
           />
           <polygon
-            points="90,4.5 93.5,8 90,11.5 86.5,8"
+            points="88,6.5 91.5,10 88,13.5 84.5,10"
             fill={s.objectives.nexusDestroyed === 'ai' ? '#3A4152' : '#FCA5A5'}
             fillOpacity={s.objectives.nexusDestroyed === 'ai' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'ai' ? '#5B6478' : '#FEF2F2'}
