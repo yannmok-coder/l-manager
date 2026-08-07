@@ -806,16 +806,16 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 각 배열은 [탑1,탑2,탑3, 미드1,미드2,미드3, 봇1,봇2,봇3, 쌍둥이1,쌍둥이2] 순서로,
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
-  { x: 14, y: 32 }, { x: 14, y: 54 }, { x: 14, y: 72 },
+  { x: 14, y: 32 }, { x: 14, y: 55 }, { x: 14, y: 72 },
   { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
-  { x: 74, y: 92 }, { x: 49, y: 90 }, { x: 34, y: 92 },
-  { x: 16, y: 85 }, { x: 19, y: 89 },
+  { x: 74, y: 92 }, { x: 49, y: 91 }, { x: 32, y: 92 },
+  { x: 16, y: 86 }, { x: 19, y: 89 },
 ];
 const RED_TOWERS = [
   { x: 35, y: 12 }, { x: 56, y: 12 }, { x: 72, y: 12 },
   { x: 62, y: 44 }, { x: 66, y: 30 }, { x: 75, y: 25 },
-  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 28 },
-  { x: 83, y: 13 }, { x: 87, y: 17 },
+  { x: 94, y: 70 }, { x: 92, y: 45 }, { x: 92, y: 30 },
+  { x: 83, y: 14 }, { x: 87, y: 17 },
 ];
 const LANES = ['top', 'mid', 'bot'];
 
@@ -3187,7 +3187,7 @@ export default function App() {
               return (
                 <div key={champ} className="flex flex-col items-center gap-1">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg"
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg overflow-hidden"
                     style={{
                       background: 'linear-gradient(135deg, #1D2740, #0A0E17)',
                       border: `2px solid ${isSpecial ? '#D9AE55' : '#2A3550'}`,
@@ -3894,6 +3894,18 @@ export default function App() {
                 <span className="font-bold flex items-center gap-1.5"><PosBadge position={p.position} /> {p.name}</span>
                 <span className="text-xs lm-muted">OVR <b className="lm-text-value">{p.overall}</b></span>
               </div>
+              <div className="flex justify-center mb-2">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
+                >
+                  {PLAYER_PORTRAITS[p.name] ? (
+                    <img src={PLAYER_PORTRAITS[p.name]} alt={p.name} className="w-full h-full" style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <img src="/player-face-blind.png" alt="" width="26" height="26" />
+                  )}
+                </div>
+              </div>
               <div className="space-y-1 mb-2">
                 <StatBar label="피지컬" value={p.mechanics} color="#F59E0B" />
                 <StatBar label="운영" value={p.gameSense} color="#8B5CF6" />
@@ -3950,7 +3962,7 @@ export default function App() {
               return (
                 <div key={champ} className="flex flex-col items-center gap-1">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg"
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg overflow-hidden"
                     style={{
                       background: 'linear-gradient(135deg, #1D2740, #0A0E17)',
                       border: `2px solid ${isSpecial ? '#D9AE55' : '#2A3550'}`,
@@ -4017,6 +4029,18 @@ export default function App() {
                   </button>
                   {expanded && (
                     <div className="mt-3">
+                      <div className="flex justify-center mb-3">
+                        <div
+                          className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+                          style={{ background: 'linear-gradient(135deg, #1D2740, #0A0E17)', border: `2px solid ${POS_COLOR[p.position]}` }}
+                        >
+                          {PLAYER_PORTRAITS[p.name] ? (
+                            <img src={PLAYER_PORTRAITS[p.name]} alt={p.name} className="w-full h-full" style={{ objectFit: 'cover' }} />
+                          ) : (
+                            <img src="/player-face-blind.png" alt="" width="26" height="26" />
+                          )}
+                        </div>
+                      </div>
                       <div className="space-y-1.5 mb-3">
                         <StatBar label="피지컬" value={p.mechanics} color="#F59E0B" />
                         <StatBar label="운영" value={p.gameSense} color="#8B5CF6" />
@@ -4030,7 +4054,7 @@ export default function App() {
                           return (
                             <div key={champ} className="flex flex-col items-center gap-1">
                               <div
-                                className="w-9 h-9 rounded-full flex items-center justify-center text-sm"
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-sm overflow-hidden"
                                 style={{
                                   background: 'linear-gradient(135deg, #1D2740, #0A0E17)',
                                   border: `2px solid ${isSpecial ? '#D9AE55' : '#2A3550'}`,
@@ -4299,14 +4323,14 @@ export default function App() {
 
     const headerNode = (
       <div className="mb-2">
-        {s.finished && (
-          <div className="text-center text-2xl font-bold mb-2" style={{ ...displayFont, color: s.finalWin ? '#2DD4C6' : '#EF4444' }}>
-            {s.finalWin ? '승리' : '패배'}
-          </div>
-        )}
         <div className="grid grid-cols-3 items-center">
           <div>
             <div className="text-sm font-semibold truncate" style={{ color: '#38BDF8' }}>{game.club.name}</div>
+            {s.finished && (
+              <div className="text-lg font-bold" style={{ ...displayFont, color: s.finalWin ? '#2DD4C6' : '#EF4444' }}>
+                {s.finalWin ? 'WIN' : 'LOSE'}
+              </div>
+            )}
             {objRow('user')}
           </div>
           <div className="text-center">
@@ -4325,6 +4349,11 @@ export default function App() {
           </div>
           <div>
             <div className="text-sm font-semibold text-right truncate" style={{ color: '#EF4444' }}>{selectedOpponent.name}</div>
+            {s.finished && (
+              <div className="text-lg font-bold text-right" style={{ ...displayFont, color: !s.finalWin ? '#2DD4C6' : '#EF4444' }}>
+                {!s.finalWin ? 'WIN' : 'LOSE'}
+              </div>
+            )}
             {objRow('ai')}
           </div>
         </div>
@@ -4514,7 +4543,7 @@ export default function App() {
           <div className="grid grid-cols-3 items-center mb-2">
             <div className="text-left">
               <div className="font-bold truncate">{game.club.name}</div>
-              <div className="text-sm font-bold" style={{ color: r.win ? '#2DD4C6' : '#EF4444' }}>{r.win ? '승리' : '패배'}</div>
+              <div className="text-sm font-bold" style={{ color: r.win ? '#2DD4C6' : '#EF4444' }}>{r.win ? 'WIN' : 'LOSE'}</div>
             </div>
             <div>
               <div className="text-4xl tracking-wide" style={displayFont}>{userKillScore} : {aiKillScore}</div>
@@ -4522,7 +4551,7 @@ export default function App() {
             </div>
             <div className="text-right">
               <div className="font-bold truncate">{r.opponentName}</div>
-              <div className="text-sm font-bold" style={{ color: !r.win ? '#2DD4C6' : '#EF4444' }}>{!r.win ? '승리' : '패배'}</div>
+              <div className="text-sm font-bold" style={{ color: !r.win ? '#2DD4C6' : '#EF4444' }}>{!r.win ? 'WIN' : 'LOSE'}</div>
             </div>
           </div>
           {!r.isTest && (
