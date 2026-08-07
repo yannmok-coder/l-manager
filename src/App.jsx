@@ -806,15 +806,15 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 각 배열은 [탑1,탑2,탑3, 미드1,미드2,미드3, 봇1,봇2,봇3, 쌍둥이1,쌍둥이2] 순서로,
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
-  { x: 10, y: 18 }, { x: 10, y: 40 }, { x: 10, y: 65 },
-  { x: 48, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
+  { x: 10, y: 22 }, { x: 10, y: 44 }, { x: 10, y: 68 },
+  { x: 44, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
   { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 22, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
-  { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 80, y: 8 },
-  { x: 56, y: 44 }, { x: 66, y: 30 }, { x: 77, y: 23 },
-  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 25 },
+  { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 76, y: 8 },
+  { x: 60, y: 44 }, { x: 66, y: 30 }, { x: 77, y: 23 },
+  { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 28 },
   { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
 const LANES = ['top', 'mid', 'bot'];
@@ -838,7 +838,7 @@ const ZONES = {
   botJungle: { x: 0.78, y: 0.58 },
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
-  baronPit: { x: 0.33, y: 0.32 },
+  baronPit: { x: 0.36, y: 0.32 },
   dragonPit: { x: 0.70, y: 0.71 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다.
@@ -855,6 +855,24 @@ function pickZone(tickRatio, objectives) {
     if (userInvadeReady) pool.push('nearRedBase', 'nearRedBase');
   }
   return ZONES[pool[randRange(0, pool.length - 1)]];
+}
+
+// 시드값 기반 결정론적 의사난수(0~1) - 같은 입력이면 항상 같은 값을 반환해 여러 틱에 걸친 보간에 사용
+function pseudoRand(n) {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+// 귀환이 아닌 이동은 순간이동하지 않고 cycleLen(틱)에 걸쳐 이전 목표점에서 다음 목표점으로 서서히 흘러가도록 한다
+function smoothDrift(seed, tick, cycleLen, range) {
+  const cyclePos = tick / cycleLen;
+  const idx = Math.floor(cyclePos);
+  const t = cyclePos - idx;
+  const point = (i) => ({
+    dx: (pseudoRand(seed * 31 + i * 97) - 0.5) * 2 * range,
+    dy: (pseudoRand(seed * 53 + i * 131 + 17) - 0.5) * 2 * range,
+  });
+  const p1 = point(idx), p2 = point(idx + 1);
+  return { dx: p1.dx + (p2.dx - p1.dx) * t, dy: p1.dy + (p2.dy - p1.dy) * t };
 }
 
 function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, tick, pendingClash, objectives) {
@@ -899,7 +917,9 @@ function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, t
       return;
     }
     if (clashPoint && eventParticipants.includes(key)) {
-      pos[key] = { x: clamp(clashPoint.x + randRange(-4, 4) / 100, 0.04, 0.96), y: clamp(clashPoint.y + randRange(-4, 4) / 100, 0.04, 0.96) };
+      // 교전 중 제자리 움직임도 매 틱 순간이동하지 않고 부드럽게 흔들리도록 한다
+      const { dx, dy } = smoothDrift(p.id, tick != null ? tick : 0, 2, 4);
+      pos[key] = { x: clamp(clashPoint.x + dx / 100, 0.04, 0.96), y: clamp(clashPoint.y + dy / 100, 0.04, 0.96) };
       return;
     }
     const h = homes[key];
@@ -913,17 +933,24 @@ function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, t
       const fountain = BASE[side];
       pos[key] = { x: clamp(fountain.x + randRange(-3, 3) / 100, 0.04, 0.96), y: clamp(fountain.y + randRange(-3, 3) / 100, 0.04, 0.96) };
     } else if (p.position === 'JGL' && tick != null) {
-      // 정글러는 유휴 상태일 때 상대 진영 안쪽을 침투할 수 있게 되기 전까지, 상대 진영을 제외한 전 지역을 자유롭게 순회한다
+      // 정글러는 유휴 상태일 때 상대 진영 안쪽을 침투할 수 있게 되기 전까지, 상대 진영을 제외한 전 지역을 자유롭게 순회한다.
+      // 목적지가 바뀔 때도 순간이동하지 않고 8틱(40초)에 걸쳐 이전 목적지에서 다음 목적지로 서서히 이동한다.
       const invadeReady = side === 'user' ? userInvadeReady : aiInvadeReady;
       const wanderPool = invadeReady ? [...JGL_WANDER_ZONES, side === 'user' ? 'nearRedBase' : 'nearBlueBase'] : JGL_WANDER_ZONES;
-      const wanderCycleLen = 8; // 8틱(40초)마다 순회 목적지 변경
+      const wanderCycleLen = 8;
       const wanderSeed = (p.id * 17) % wanderCycleLen;
-      const wanderCycleIndex = Math.floor((tick + wanderSeed) / wanderCycleLen);
-      const wanderIndex = (p.id * 5 + wanderCycleIndex * 11) % wanderPool.length;
-      const dest = ZONES[wanderPool[wanderIndex]];
-      pos[key] = { x: clamp(dest.x + randRange(-4, 4) / 100, 0.04, 0.96), y: clamp(dest.y + randRange(-4, 4) / 100, 0.04, 0.96) };
+      const wanderPos = (tick + wanderSeed) / wanderCycleLen;
+      const wanderIdx = Math.floor(wanderPos);
+      const wanderProgress = wanderPos - wanderIdx;
+      const destFor = (i) => ZONES[wanderPool[(p.id * 5 + i * 11) % wanderPool.length]];
+      const d1 = destFor(wanderIdx), d2 = destFor(wanderIdx + 1);
+      const destX = d1.x + (d2.x - d1.x) * wanderProgress;
+      const destY = d1.y + (d2.y - d1.y) * wanderProgress;
+      pos[key] = { x: clamp(destX + randRange(-3, 3) / 100, 0.04, 0.96), y: clamp(destY + randRange(-3, 3) / 100, 0.04, 0.96) };
     } else {
-      pos[key] = { x: clamp(h.x + randRange(-5, 5) / 100, 0.04, 0.96), y: clamp(h.y + randRange(-5, 5) / 100, 0.04, 0.96) };
+      // 라인에 머무는 동안도 매 틱 무작위로 순간이동하지 않고, 3틱(15초)에 걸쳐 서서히 흘러 다니듯 움직인다
+      const { dx, dy } = smoothDrift(p.id, tick != null ? tick : 0, 3, 5);
+      pos[key] = { x: clamp(h.x + dx / 100, 0.04, 0.96), y: clamp(h.y + dy / 100, 0.04, 0.96) };
     }
   });
   return pos;
@@ -4278,7 +4305,7 @@ export default function App() {
             <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.4" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
           ))}
           <polygon
-            points="10,89.5 13.5,93 10,96.5 6.5,93"
+            points="12,87.5 15.5,91 12,94.5 8.5,91"
             fill={s.objectives.nexusDestroyed === 'user' ? '#3A4152' : '#93C5FD'}
             fillOpacity={s.objectives.nexusDestroyed === 'user' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'user' ? '#5B6478' : '#EFF6FF'}
@@ -4286,7 +4313,7 @@ export default function App() {
             className={s.objectives.nexusDestroyed === 'user' ? '' : 'animate-pulse'}
           />
           <polygon
-            points="90,2.5 93.5,6 90,9.5 86.5,6"
+            points="90,4.5 93.5,8 90,11.5 86.5,8"
             fill={s.objectives.nexusDestroyed === 'ai' ? '#3A4152' : '#FCA5A5'}
             fillOpacity={s.objectives.nexusDestroyed === 'ai' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'ai' ? '#5B6478' : '#FEF2F2'}
