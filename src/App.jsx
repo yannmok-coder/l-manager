@@ -807,13 +807,13 @@ const RESPAWN_WALK_TICKS = 4; // 리스폰 후 우물에서 라인까지 복귀�
 // 라인 내에서는 1차(바깥)→2차→3차(안쪽, 본진에 가까움) 순서로 배치했다.
 const BLUE_TOWERS = [
   { x: 10, y: 18 }, { x: 10, y: 40 }, { x: 10, y: 65 },
-  { x: 56, y: 56 }, { x: 38, y: 70 }, { x: 24, y: 80 },
+  { x: 52, y: 56 }, { x: 38, y: 70 }, { x: 28, y: 76 },
   { x: 70, y: 90 }, { x: 45, y: 90 }, { x: 22, y: 88 },
   { x: 16, y: 85 }, { x: 10, y: 78 },
 ];
 const RED_TOWERS = [
   { x: 35, y: 8 }, { x: 60, y: 8 }, { x: 80, y: 8 },
-  { x: 44, y: 44 }, { x: 62, y: 30 }, { x: 76, y: 20 },
+  { x: 52, y: 44 }, { x: 66, y: 30 }, { x: 80, y: 20 },
   { x: 92, y: 68 }, { x: 92, y: 45 }, { x: 92, y: 22 },
   { x: 84, y: 15 }, { x: 90, y: 22 },
 ];
@@ -838,8 +838,8 @@ const ZONES = {
   botJungle: { x: 0.78, y: 0.58 },
   nearBlueBase: { x: 0.2, y: 0.78 },
   nearRedBase: { x: 0.8, y: 0.22 },
-  baronPit: { x: 0.21, y: 0.23 },
-  dragonPit: { x: 0.79, y: 0.77 },
+  baronPit: { x: 0.25, y: 0.27 },
+  dragonPit: { x: 0.75, y: 0.73 },
 };
 // 경기 흐름(초반/중반/후반)에 따라 교전이 벌어질 확률이 높은 구역이 달라진다 (상대 넥서스 안쪽은 제외, 최종 결전에서만 사용)
 function pickZone(tickRatio) {
@@ -850,7 +850,7 @@ function pickZone(tickRatio) {
   return ZONES[pool[randRange(0, pool.length - 1)]];
 }
 
-function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, tick) {
+function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, tick, pendingClash) {
   const homes = {};
   userLineup.forEach((p, i) => { homes['user-' + i] = homeFor(p.position, 'user'); });
   aiLineup.forEach((p, i) => { homes['ai-' + i] = homeFor(p.position, 'ai'); });
@@ -873,6 +873,18 @@ function computePositions(userLineup, aiLineup, eventParticipants, clashPoint, t
       pos[key] = {
         x: clamp(fountain.x + (h.x - fountain.x) * progress + randRange(-3, 3) / 100, 0.04, 0.96),
         y: clamp(fountain.y + (h.y - fountain.y) * progress + randRange(-3, 3) / 100, 0.04, 0.96),
+      };
+      return;
+    }
+    if (pendingClash && (pendingClash.userKeys.includes(key) || pendingClash.aiKeys.includes(key))) {
+      // 교전/오브젝트 장소로 이동 중: 경과 시간에 비례해 목표 지점으로 서서히 다가간다
+      const h = homes[key];
+      const target = pendingClash.targetPoint;
+      const span = Math.max(1, pendingClash.arriveTick - pendingClash.startTick);
+      const progress = clamp((tick - pendingClash.startTick) / span, 0, 1);
+      pos[key] = {
+        x: clamp(h.x + (target.x - h.x) * progress + randRange(-3, 3) / 100, 0.04, 0.96),
+        y: clamp(h.y + (target.y - h.y) * progress + randRange(-3, 3) / 100, 0.04, 0.96),
       };
       return;
     }
@@ -968,13 +980,12 @@ function tickAdvance(prev) {
 
   let capBurstUsed = prev.capBurstUsed || false;
 
-  function resolveTeamfight() {
+  function selectFightParticipants() {
     const remainingBudget = killCap - currentTotalKills();
-    if (remainingBudget <= 0) return false;
-
+    if (remainingBudget <= 0) return null;
     const userAvail = availablePlayers(userLineup);
     const aiAvail = availablePlayers(aiLineup);
-    if (userAvail.length === 0 || aiAvail.length === 0) return false;
+    if (userAvail.length === 0 || aiAvail.length === 0) return null;
 
     // 킬 상한에 가까워지면(남은 여유 3~8킬) 마지막으로 양팀이 크게 모이는 결정적 한타를 한 번 터뜨린다
     const isCapBurst = !capBurstUsed && remainingBudget >= 3 && remainingBudget <= 8;
@@ -994,6 +1005,16 @@ function tickAdvance(prev) {
     const aiCount = isCapBurst ? Math.min(5, aiAvail.length) : pickParticipantCount(aiAvail.length);
     const userParticipants = sample(userAvail, userCount);
     const aiParticipants = sample(aiAvail, aiCount);
+    return { userParticipants, aiParticipants, isCapBurst };
+  }
+
+  function planTeamfight(preSelected) {
+    const selection = preSelected || selectFightParticipants();
+    if (!selection) return null;
+    const { userParticipants, aiParticipants, isCapBurst } = selection;
+    const remainingBudget = killCap - currentTotalKills();
+    if (remainingBudget <= 0) return null;
+    const userCount = userParticipants.length, aiCount = aiParticipants.length;
 
     userParticipants.forEach(({ p }) => { p.damage = (p.damage || 0) + Math.round(p.overall * 3.2) + randRange(40, 120); });
     aiParticipants.forEach(({ p }) => { p.damage = (p.damage || 0) + Math.round(p.overall * 3.2) + randRange(40, 120); });
@@ -1021,22 +1042,16 @@ function tickAdvance(prev) {
     const maxKillsThisFight = clamp(totalParticipants, 1, 9);
     let killsThisFight = isCapBurst ? randRange(3, Math.min(8, remainingBudget)) : randRange(0, maxKillsThisFight);
     killsThisFight = Math.min(killsThisFight, loseParticipants.length, remainingBudget);
-    if (killsThisFight <= 0) return false;
+    if (killsThisFight <= 0) return null;
     // 패배 팀이 전멸(에이스)하는 경우는 평소엔 드물게, 경기 극후반부로 갈수록 자주 나오게 한다
     if (!isCapBurst && killsThisFight === loseParticipants.length && loseParticipants.length >= 3) {
       const aceAllowProb = clamp(0.06 + Math.pow(tickRatio, 4) * 0.6, 0.06, 0.6);
       if (Math.random() > aceAllowProb) killsThisFight -= 1;
     }
-    if (killsThisFight <= 0) return false;
+    if (killsThisFight <= 0) return null;
     if (isCapBurst) capBurstUsed = true;
 
-    // 리스폰 시간: 경기시간 10분 전까지는 10초로 고정, 10분 이후로는 1분당 4초씩 늘어나 최대 55초까지 증가한다
-    const gameMinutes = tick / TICKS_PER_MIN;
-    const respawnSeconds = gameMinutes < 10 ? 10 : Math.min(55, 10 + (gameMinutes - 10) * 4);
-    const respawnDuration = Math.max(1, Math.round(respawnSeconds / 5));
     const victims = sample(loseParticipants, killsThisFight);
-    const killNames = [];
-    const killTally = new Map();
     // 서포터는 상대적으로 킬 확률을 낮게, 그 외 포지션은 동일 가중치로 킬러를 뽑는다
     function pickKiller(participants) {
       const weights = participants.map(({ p }) => (p.position === 'SUP' ? 0.2 : 1));
@@ -1048,44 +1063,60 @@ function tickAdvance(prev) {
       }
       return participants[participants.length - 1].p;
     }
-    victims.forEach(({ p: victim }) => {
-      victim.deaths++;
-      victim.respawnAtTick = tick + respawnDuration;
-      const killer = pickKiller(winParticipants);
-      killer.kills++;
-      killNames.push(victim.name);
-      killTally.set(killer, (killTally.get(killer) || 0) + 1);
-      log = [{ id: tick + '-' + Math.random(), text: `${killer.name}(${killer.champion})님이 ${victim.name}(${victim.champion})님을 처치했습니다!` }, ...log].slice(0, 6);
-      winParticipants.forEach(({ p: assistCandidate }) => {
-        if (assistCandidate === killer) return;
-        const assistChance = assistCandidate.position === 'SUP' ? 0.85 : 0.5;
-        if (Math.random() < assistChance) assistCandidate.assists++;
-      });
-    });
+    const victimPlans = victims.map(({ p: victim }) => ({ victim, killer: pickKiller(winParticipants) }));
 
+    return {
+      winSide, winParticipants, loseParticipants, victimPlans, killsThisFight,
+      userKeys: userParticipants.map(({ i }) => 'user-' + i),
+      aiKeys: aiParticipants.map(({ i }) => 'ai-' + i),
+    };
+  }
+
+  // 계획된 킬 중 하나를 실제로 적용(사망/리스폰 타이머/로그/어시스트)
+  function applyOneKill(plan, index, atTick) {
+    const { victim, killer } = plan.victimPlans[index];
+    const gameMinutes = atTick / TICKS_PER_MIN;
+    const respawnSeconds = gameMinutes < 10 ? 10 : Math.min(55, 10 + (gameMinutes - 10) * 4);
+    const respawnDuration = Math.max(1, Math.round(respawnSeconds / 5));
+    victim.deaths++;
+    victim.respawnAtTick = atTick + respawnDuration;
+    killer.kills++;
+    log = [{ id: atTick + '-' + Math.random(), text: `${killer.name}(${killer.champion})님이 ${victim.name}(${victim.champion})님을 처치했습니다!` }, ...log].slice(0, 6);
+    plan.winParticipants.forEach(({ p: assistCandidate }) => {
+      if (assistCandidate === killer) return;
+      const assistChance = assistCandidate.position === 'SUP' ? 0.85 : 0.5;
+      if (Math.random() < assistChance) assistCandidate.assists++;
+    });
+  }
+
+  // 한타 종료 시점에 스코어 반영과 멀티킬/ACE 로그를 마무리
+  function finalizeTeamfight(plan) {
+    const { winSide, killsThisFight } = plan;
     if (winSide === 'user') userScore += killsThisFight * 2; else aiScore += killsThisFight * 2;
     const winLabel = winSide === 'user' ? '우리 팀' : '상대 팀';
-
-    // 한타 내 멀티킬 로그
+    const killTally = new Map();
+    plan.victimPlans.forEach(({ killer }) => killTally.set(killer, (killTally.get(killer) || 0) + 1));
     const multiKillLabels = { 2: '더블킬', 3: '트리플킬', 4: '쿼드라킬', 5: '펜타킬' };
     killTally.forEach((count, killerPlayer) => {
       if (multiKillLabels[count]) {
         log = [{ id: tick + '-' + Math.random(), text: `${killerPlayer.champion}이(가) ${multiKillLabels[count]}!` }, ...log].slice(0, 6);
       }
     });
-
-    // 한타 내 상대 팀 전원(5명) 전멸 시 ACE 로그 - 이후 한동안 오브젝트를 적극적으로 노린다
     const losingFullLineup = winSide === 'user' ? aiLineup : userLineup;
     const isAce = losingFullLineup.length === 5 && losingFullLineup.every((p) => tick < (p.respawnAtTick || 0));
     if (isAce) {
       log = [{ id: tick + '-' + Math.random(), text: `${winLabel} ACE!` }, ...log].slice(0, 6);
       objectives.aceAdvantage = { side: winSide, untilTick: tick + 6 };
     }
+  }
 
-    eventParticipants = [
-      ...userParticipants.map(({ i }) => 'user-' + i),
-      ...aiParticipants.map(({ i }) => 'ai-' + i),
-    ];
+  // 이동/전투 단계 없이 즉시 해결이 필요한 경우(예: 경기 최종 결전)를 위한 래퍼
+  function resolveTeamfight(preSelected) {
+    const plan = planTeamfight(preSelected);
+    if (!plan) return false;
+    plan.victimPlans.forEach((_, idx) => applyOneKill(plan, idx, tick));
+    finalizeTeamfight(plan);
+    eventParticipants = [...plan.userKeys, ...plan.aiKeys];
     return true;
   }
 
@@ -1199,7 +1230,7 @@ function tickAdvance(prev) {
     objectives.nexusDestroyed = nexusLoserSide;
     const nexusWinnerLabel = finalWin ? '우리 팀' : '상대 팀';
     log = [{ id: tick + '-nexus', text: `${nexusWinnerLabel}이(가) 쌍둥이 타워를 무너뜨리고 넥서스를 파괴했습니다! 경기 종료!` }, ...log].slice(0, 6);
-    return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: true, eventParticipants: allKeys, objectives, finalWin, elderBuff, capBurstUsed };
+    return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: true, eventParticipants: allKeys, objectives, finalWin, elderBuff, capBurstUsed, pendingClash: null };
   }
 
   const totalBarons = objectives.user.barons + objectives.ai.barons;
@@ -1210,8 +1241,8 @@ function tickAdvance(prev) {
   const towerAvailable = tick >= 5 * TICKS_PER_MIN;
   let towerChance = 0;
   if (towerAvailable) {
-    towerChance = (0.20 + tickRatio * 0.10) / TICKS_PER_MIN;
-    if (towerBehind) towerChance += (nearEnd ? 0.45 : 0.20) / TICKS_PER_MIN;
+    towerChance = (0.50 + tickRatio * 0.25) / TICKS_PER_MIN;
+    if (towerBehind) towerChance += (nearEnd ? 0.85 : 0.55) / TICKS_PER_MIN;
     towerChance *= objectiveRushMult;
   }
   const dragonAvailable = tick >= objectives.nextDragonTick;
@@ -1225,42 +1256,105 @@ function tickAdvance(prev) {
   const baronChance = (baronAvailable && totalBarons < 2) ? (0.05 / TICKS_PER_MIN) * objectiveRushMult : 0;
   const heraldChance = tickRatio < 0.55 ? 0.05 / TICKS_PER_MIN : 0;
 
-  const roll = Math.random();
-  let acc = 0;
-  let gatherPoint = null;
-  if (roll < (acc += skirmishChance)) {
-    resolveTeamfight();
-  } else if (roll < (acc += towerChance)) {
-    const towerResult = resolveObjective('타워');
-    if (towerResult) {
-      const { side, objLogLabel } = towerResult;
-      log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 파괴했습니다!` }, ...log].slice(0, 6);
+  const ARRIVE_TICKS = 3; // 15초(3틱) 동안 이동해서 모인다
+  let pendingClash = prev.pendingClash || null;
+  let justResolvedPoint = null;
+  let justResolvedKind = null;
+
+  if (pendingClash && pendingClash.phase === 'travel' && tick < pendingClash.arriveTick) {
+    // 아직 모이는 중 - 새 판정을 굴리지 않고 이동만 진행
+    eventParticipants = [...pendingClash.userKeys, ...pendingClash.aiKeys];
+  } else if (pendingClash && pendingClash.phase === 'travel' && tick >= pendingClash.arriveTick) {
+    // 도착 - 이동을 마치고 15~20초(3~4틱)간 그 자리에서 교전/처리 상태로 전환
+    eventParticipants = [...pendingClash.userKeys, ...pendingClash.aiKeys];
+    const combatTicks = randRange(3, 4);
+    if (pendingClash.kind === 'fight') {
+      const plan = planTeamfight(pendingClash.selection);
+      pendingClash = plan
+        ? { ...pendingClash, phase: 'combat', combatPlan: plan, appliedCount: 0, resolveTick: tick + combatTicks }
+        : null;
+    } else {
+      pendingClash = { ...pendingClash, phase: 'combat', resolveTick: tick + combatTicks };
     }
-  } else if (roll < (acc += dragonChance)) {
-    const { side, objLogLabel, isElder } = resolveObjective('드래곤');
-    const flavor = isElder ? `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 치열한 한타 끝에 ${objLogLabel}을(를) 처치했습니다! 승리에 대한 확신이 차오릅니다!` : `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 드래곤 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!`;
-    log = [{ id: tick + '-' + Math.random(), text: flavor }, ...log].slice(0, 6);
-    eventParticipants = [...userLineup.map((_, i) => 'user-' + i), ...aiLineup.map((_, i) => 'ai-' + i)];
-    gatherPoint = { x: ZONES.dragonPit.x * 100, y: ZONES.dragonPit.y * 100 };
-  } else if (roll < (acc += baronChance)) {
-    const { side, objLogLabel } = resolveObjective('바론');
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 바론 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!` }, ...log].slice(0, 6);
-    eventParticipants = [...userLineup.map((_, i) => 'user-' + i), ...aiLineup.map((_, i) => 'ai-' + i)];
-    gatherPoint = { x: ZONES.baronPit.x * 100, y: ZONES.baronPit.y * 100 };
-  } else if (roll < (acc += heraldChance)) {
-    const side = Math.random() < sideChance() ? 'user' : 'ai';
-    if (side === 'user') userScore += 3; else aiScore += 3;
-    log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 전령을(를) 처치했습니다!` }, ...log].slice(0, 6);
+  } else if (pendingClash && pendingClash.phase === 'combat' && tick < pendingClash.resolveTick) {
+    // 교전 중: 목표 지점에서 조금씩 움직이며 싸운다. 한타라면 이번 틱에 1~2명만 처치를 적용한다
+    eventParticipants = [...pendingClash.userKeys, ...pendingClash.aiKeys];
+    if (pendingClash.kind === 'fight' && pendingClash.combatPlan) {
+      const plan = pendingClash.combatPlan;
+      const remaining = plan.victimPlans.length - pendingClash.appliedCount;
+      if (remaining > 0) {
+        const applyNow = Math.min(remaining, randRange(1, 2));
+        for (let k = 0; k < applyNow; k++) applyOneKill(plan, pendingClash.appliedCount + k, tick);
+        pendingClash = { ...pendingClash, appliedCount: pendingClash.appliedCount + applyNow };
+      }
+    }
+  } else if (pendingClash && pendingClash.phase === 'combat' && tick >= pendingClash.resolveTick) {
+    // 교전/처리 종료 - 마무리
+    justResolvedPoint = pendingClash.targetPoint;
+    justResolvedKind = pendingClash.kind;
+    eventParticipants = [...pendingClash.userKeys, ...pendingClash.aiKeys];
+    if (pendingClash.kind === 'fight' && pendingClash.combatPlan) {
+      const plan = pendingClash.combatPlan;
+      for (let k = pendingClash.appliedCount; k < plan.victimPlans.length; k++) applyOneKill(plan, k, tick);
+      finalizeTeamfight(plan);
+    } else if (pendingClash.kind === 'dragon') {
+      const { side, objLogLabel, isElder } = resolveObjective('드래곤');
+      const flavor = isElder ? `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 치열한 한타 끝에 ${objLogLabel}을(를) 처치했습니다! 승리에 대한 확신이 차오릅니다!` : `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 드래곤 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!`;
+      log = [{ id: tick + '-' + Math.random(), text: flavor }, ...log].slice(0, 6);
+    } else if (pendingClash.kind === 'baron') {
+      const { side, objLogLabel } = resolveObjective('바론');
+      log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 바론 앞에서 한타 끝에 ${objLogLabel}을(를) 처치했습니다!` }, ...log].slice(0, 6);
+    }
+    pendingClash = null;
+  } else {
+    // 진행 중인 게더링이 없을 때만 새 판정을 굴린다
+    const roll = Math.random();
+    let acc = 0;
+    if (roll < (acc += skirmishChance)) {
+      const selection = selectFightParticipants();
+      if (selection) {
+        const userKeys = selection.userParticipants.map(({ i }) => 'user-' + i);
+        const aiKeys = selection.aiParticipants.map(({ i }) => 'ai-' + i);
+        pendingClash = { kind: 'fight', phase: 'travel', selection, targetPoint: pickZone(tickRatio), userKeys, aiKeys, startTick: tick, arriveTick: tick + ARRIVE_TICKS };
+        eventParticipants = [...userKeys, ...aiKeys];
+      }
+    } else if (roll < (acc += towerChance)) {
+      const towerResult = resolveObjective('타워');
+      if (towerResult) {
+        const { side, objLogLabel } = towerResult;
+        log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) ${objLogLabel}을(를) 파괴했습니다!` }, ...log].slice(0, 6);
+      }
+    } else if (roll < (acc += dragonChance)) {
+      const userKeys = userLineup.map((_, i) => 'user-' + i);
+      const aiKeys = aiLineup.map((_, i) => 'ai-' + i);
+      pendingClash = { kind: 'dragon', phase: 'travel', targetPoint: { x: ZONES.dragonPit.x, y: ZONES.dragonPit.y }, userKeys, aiKeys, startTick: tick, arriveTick: tick + ARRIVE_TICKS };
+      eventParticipants = [...userKeys, ...aiKeys];
+    } else if (roll < (acc += baronChance)) {
+      const userKeys = userLineup.map((_, i) => 'user-' + i);
+      const aiKeys = aiLineup.map((_, i) => 'ai-' + i);
+      pendingClash = { kind: 'baron', phase: 'travel', targetPoint: { x: ZONES.baronPit.x, y: ZONES.baronPit.y }, userKeys, aiKeys, startTick: tick, arriveTick: tick + ARRIVE_TICKS };
+      eventParticipants = [...userKeys, ...aiKeys];
+    } else if (roll < (acc += heraldChance)) {
+      const side = Math.random() < sideChance() ? 'user' : 'ai';
+      if (side === 'user') userScore += 3; else aiScore += 3;
+      log = [{ id: tick + '-' + Math.random(), text: `${side === 'user' ? '우리 팀' : '상대 팀'}이(가) 전령을(를) 처치했습니다!` }, ...log].slice(0, 6);
+    }
   }
 
   let positions;
-  if (gatherPoint) {
-    positions = finalSiegePositions(userLineup, aiLineup, gatherPoint);
+  if (justResolvedPoint && justResolvedKind !== 'fight') {
+    positions = finalSiegePositions(userLineup, aiLineup, justResolvedPoint);
+  } else if (justResolvedPoint && justResolvedKind === 'fight') {
+    positions = computePositions(userLineup, aiLineup, eventParticipants, justResolvedPoint, tick);
+  } else if (pendingClash && pendingClash.phase === 'combat') {
+    // 교전 중: 목표 지점 근처에서 소폭 흔들리며 싸우는 모습을 보인다
+    positions = computePositions(userLineup, aiLineup, eventParticipants, pendingClash.targetPoint, tick);
+  } else if (pendingClash) {
+    positions = computePositions(userLineup, aiLineup, eventParticipants, null, tick, pendingClash);
   } else {
-    const clashPoint = eventParticipants.length > 0 ? pickZone(tickRatio) : null;
-    positions = computePositions(userLineup, aiLineup, eventParticipants, clashPoint, tick);
+    positions = computePositions(userLineup, aiLineup, eventParticipants, null, tick);
   }
-  return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: false, eventParticipants, objectives, elderBuff, capBurstUsed };
+  return { ...prev, tick, userLineup, aiLineup, userScore, aiScore, log, positions, finished: false, eventParticipants, objectives, elderBuff, capBurstUsed, pendingClash };
 }
 
 /* ============================== 작은 컴포넌트 ============================== */
@@ -2250,6 +2344,7 @@ export default function App() {
       finalWin: null,
       killCap: randRange(13, 43),
       capBurstUsed: false,
+      pendingClash: null,
     });
     setScreen('sim');
   }
@@ -4079,15 +4174,13 @@ export default function App() {
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
           <image href="/map-background.png" x="0" y="0" width="100" height="100" />
           {BLUE_TOWERS.map((pt, i) => !isTowerDestroyed(s.objectives.ai, i) && (
-            <circle key={'bt' + i} cx={pt.x} cy={pt.y} r="1.9" fill="#3B82F6" fillOpacity="0.85" stroke="#BFDBFE" strokeWidth="0.5" />
+            <circle key={'bt' + i} cx={pt.x} cy={pt.y} r="1.4" fill="#3B82F6" fillOpacity="0.85" stroke="#BFDBFE" strokeWidth="0.5" />
           ))}
           {RED_TOWERS.map((pt, i) => !isTowerDestroyed(s.objectives.user, i) && (
-            <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.9" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
+            <circle key={'rt' + i} cx={pt.x} cy={pt.y} r="1.4" fill="#EF4444" fillOpacity="0.85" stroke="#FECACA" strokeWidth="0.5" />
           ))}
-          <polygon points="10,89.3 12.3,93 10,96.7 7.7,93" fill="#60CFFF" fillOpacity="0.95" stroke="#DBF3FF" strokeWidth="0.3" />
-          <polygon points="90,4.3 92.3,8 90,11.7 87.7,8" fill="#FF6B6B" fillOpacity="0.95" stroke="#FFE1E1" strokeWidth="0.3" />
           <polygon
-            points="10,82 13,86 10,90.5 7,86"
+            points="10,89.5 13.5,93 10,96.5 6.5,93"
             fill={s.objectives.nexusDestroyed === 'user' ? '#3A4152' : '#93C5FD'}
             fillOpacity={s.objectives.nexusDestroyed === 'user' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'user' ? '#5B6478' : '#EFF6FF'}
@@ -4095,7 +4188,7 @@ export default function App() {
             className={s.objectives.nexusDestroyed === 'user' ? '' : 'animate-pulse'}
           />
           <polygon
-            points="90,10 93,14 90,18.5 87,14"
+            points="90,2.5 93.5,6 90,9.5 86.5,6"
             fill={s.objectives.nexusDestroyed === 'ai' ? '#3A4152' : '#FCA5A5'}
             fillOpacity={s.objectives.nexusDestroyed === 'ai' ? 0.6 : 0.95}
             stroke={s.objectives.nexusDestroyed === 'ai' ? '#5B6478' : '#FEF2F2'}
@@ -4104,7 +4197,7 @@ export default function App() {
           />
           {s.tick >= s.objectives.nextBaronTick && (s.objectives.user.barons + s.objectives.ai.barons) < 2 && (
             <polygon
-              points={`${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 - 2.6} ${ZONES.baronPit.x * 100 + 2.6},${ZONES.baronPit.y * 100} ${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 + 2.6} ${ZONES.baronPit.x * 100 - 2.6},${ZONES.baronPit.y * 100}`}
+              points={`${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 - 2.0} ${ZONES.baronPit.x * 100 + 2.0},${ZONES.baronPit.y * 100} ${ZONES.baronPit.x * 100},${ZONES.baronPit.y * 100 + 2.0} ${ZONES.baronPit.x * 100 - 2.0},${ZONES.baronPit.y * 100}`}
               fill="#C084FC" fillOpacity="0.85" stroke="#F3E8FF" strokeWidth="0.3" className="animate-pulse"
             />
           )}
@@ -4113,15 +4206,12 @@ export default function App() {
             const dragonColor = DRAGON_COLORS[isElderNext ? '장로' : s.objectives.nextDragonType] || '#FB923C';
             return (
               <polygon
-                points={`${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 - 2.6} ${ZONES.dragonPit.x * 100 + 2.6},${ZONES.dragonPit.y * 100} ${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 + 2.6} ${ZONES.dragonPit.x * 100 - 2.6},${ZONES.dragonPit.y * 100}`}
+                points={`${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 - 2.0} ${ZONES.dragonPit.x * 100 + 2.0},${ZONES.dragonPit.y * 100} ${ZONES.dragonPit.x * 100},${ZONES.dragonPit.y * 100 + 2.0} ${ZONES.dragonPit.x * 100 - 2.0},${ZONES.dragonPit.y * 100}`}
                 fill={dragonColor} fillOpacity="0.85" stroke="#FFF7ED" strokeWidth="0.3" className="animate-pulse"
               />
             );
           })()}
         </svg>
-        {[[0.16, 0.26, 11], [0.32, 0.15, 9], [0.24, 0.36, 8], [0.66, 0.3, 10], [0.8, 0.6, 11], [0.7, 0.4, 8], [0.2, 0.72, 12], [0.6, 0.6, 9], [0.12, 0.58, 8], [0.86, 0.2, 8]].map(([bx, by, sz], bi) => (
-          <div key={bi} className="absolute rounded-full" style={{ left: `${bx * 100}%`, top: `${by * 100}%`, width: `${sz}%`, height: `${sz}%`, background: 'radial-gradient(circle, rgba(52,180,100,0.7), rgba(52,180,100,0.15) 65%, transparent 85%)', border: '1px solid rgba(74,222,128,0.35)' }} />
-        ))}
         <div className="absolute rounded-full" style={{ left: '16%', top: '58%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
         <div className="absolute rounded-full" style={{ left: '76%', top: '38%', width: '9%', height: '9%', background: 'radial-gradient(circle, rgba(250,204,21,0.55), transparent 75%)' }} />
         {s.tick >= s.objectives.nextBaronTick && (s.objectives.user.barons + s.objectives.ai.barons) < 2 && (
@@ -4140,7 +4230,7 @@ export default function App() {
             <div key={p.id} title={p.name} className="absolute rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ease-out"
               style={{
                 left: `${pos.x * 100}%`, top: `${pos.y * 100}%`, transform: active ? 'translate(-50%,-50%) scale(1.5)' : 'translate(-50%,-50%)',
-                width: 20, height: 20, background: '#3B82F6', color: '#0A0E17', zIndex: active ? 10 : 1,
+                width: 15, height: 15, background: '#3B82F6', color: '#0A0E17', zIndex: active ? 10 : 1,
                 boxShadow: active ? '0 0 0 3px #FDE68A' : 'none',
               }}>
               {POS_LABEL[p.position][0]}
@@ -4155,7 +4245,7 @@ export default function App() {
             <div key={p.id} title={p.name} className="absolute rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ease-out"
               style={{
                 left: `${pos.x * 100}%`, top: `${pos.y * 100}%`, transform: active ? 'translate(-50%,-50%) scale(1.5)' : 'translate(-50%,-50%)',
-                width: 20, height: 20, background: '#EF4444', color: '#0A0E17', zIndex: active ? 10 : 1,
+                width: 15, height: 15, background: '#EF4444', color: '#0A0E17', zIndex: active ? 10 : 1,
                 boxShadow: active ? '0 0 0 3px #FDE68A' : 'none',
               }}>
               {POS_LABEL[p.position][0]}
