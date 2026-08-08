@@ -106,7 +106,7 @@ const DRAGON_ICON = {
   마법: '/objective-icons/obj-dragon-magic.png',
   장로: '/objective-icons/obj-dragon-elder.png',
 };
-const APP_VERSION = 'v.0.054';
+const APP_VERSION = 'v.0.055';
 const APP_LOGO_DATA_URI = '/logo.png'; // 배포판 전용: 파일 참조
 const SINGLE_PULL_COST = 350;
 const MULTI_PULL_COUNT = 5;
@@ -390,7 +390,14 @@ function generateInitialGame(name, region, usedSetRef, idRef) {
     players.push(generatePlayer(pos, usedSetRef.current, idRef, { tier: '1군', gradeInfo: PLAYER_GRADE_TABLE[0] }));
   });
   const clubValue = computeClubValue(players);
-  const club = { name, region, value: clubValue, budget: 3500, wins: 0, losses: 0 };
+  const club = {
+    name, region, value: clubValue, budget: 3500, wins: 0, losses: 0,
+    record: {
+      domestic: { '1군': { wins: 0, losses: 0 }, '2군': { wins: 0, losses: 0 } },
+      international: { '1군': { wins: 0, losses: 0 }, '2군': { wins: 0, losses: 0 } },
+      scrim: { '1군': { wins: 0, losses: 0 }, '2군': { wins: 0, losses: 0 } },
+    },
+  };
   return { club, players, matchHistory: [] };
 }
 
@@ -1836,8 +1843,6 @@ export default function App() {
   const [leagueTierChoice, setLeagueTierChoice] = useState(null);
   const [rosterFilter, setRosterFilter] = useState('ALL');
   const [releaseConfirmId, setReleaseConfirmId] = useState(null);
-  const [renameId, setRenameId] = useState(null);
-  const [renameInput, setRenameInput] = useState('');
   const [pullResults, setPullResults] = useState([]);
   const [flippedCards, setFlippedCards] = useState({});
   const [shopPositionFilter, setShopPositionFilter] = useState('ALL');
@@ -1849,6 +1854,8 @@ export default function App() {
   const [viewingClubRosters, setViewingClubRosters] = useState(null);
   const [clubDetailTier, setClubDetailTier] = useState('1군');
   const [rankingTab, setRankingTab] = useState('domestic');
+  const [historyCategory, setHistoryCategory] = useState('domestic');
+  const [historyTier, setHistoryTier] = useState('1군');
   const [onlineMatchCode, setOnlineMatchCode] = useState(null);
   const [myInviteCode, setMyInviteCode] = useState(null);
   const [inviteCodeInput, setInviteCodeInput] = useState('');
@@ -1966,6 +1973,17 @@ export default function App() {
           parsed.players.forEach((p) => usedNamesRef.current.add(p.name));
           idRef.current = Math.max(...parsed.players.map((p) => p.id)) + 1;
           loadedPlayers = parsed.players;
+          if (!parsed.club.record) {
+            needsBackfillSave = true;
+            parsed.club = {
+              ...parsed.club,
+              record: {
+                domestic: { '1군': { wins: parsed.club.wins || 0, losses: parsed.club.losses || 0 }, '2군': { wins: 0, losses: 0 } },
+                international: { '1군': { wins: 0, losses: 0 }, '2군': { wins: 0, losses: 0 } },
+                scrim: { '1군': { wins: 0, losses: 0 }, '2군': { wins: 0, losses: 0 } },
+              },
+            };
+          }
           setGame(parsed);
           setScreen('home');
           if (needsBackfillSave) saveGame(parsed);
@@ -2036,19 +2054,6 @@ export default function App() {
       return newGame;
     });
     setReleaseConfirmId(null);
-  }
-
-  function handleRenamePlayer(playerId, newName) {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-    setGame((prev) => {
-      const newPlayers = prev.players.map((p) => (p.id === playerId ? { ...p, name: trimmed } : p));
-      const newGame = { ...prev, players: newPlayers };
-      saveGame(newGame);
-      return newGame;
-    });
-    setRenameId(null);
-    setRenameInput('');
   }
 
   function handleSetTier(playerId, newTier) {
@@ -2614,6 +2619,7 @@ export default function App() {
         const club = {
           ...prev.club, qualifiedRank: rank, qualifiedRegion: league.region, qualifiedWins: userWinsCount, budget: prev.club.budget + rankReward,
           regionalTitles: (prev.club.regionalTitles || 0) + (rank === 1 ? 1 : 0),
+          qualifiedRankByTier: { ...(prev.club.qualifiedRankByTier || {}), [league.tier || '1군']: rank },
         };
         const players = creditAchievements(prev.players, league.entryPool, achField, league.tier);
         const newGame = { ...prev, club, players, league: null };
@@ -2635,6 +2641,7 @@ export default function App() {
         const club = {
           ...prev.club, ...(placement ? { internationalResult: placement } : {}), budget: prev.club.budget + rankReward,
           internationalTitles: (prev.club.internationalTitles || 0) + (placement === '우승' ? 1 : 0),
+          ...(placement ? { internationalResultByTier: { ...(prev.club.internationalResultByTier || {}), [league.tier || '1군']: placement } } : {}),
         };
         const players = creditAchievements(prev.players, league.entryPool, achField, league.tier);
         const newGame = { ...prev, club, players, league: null };
@@ -2973,11 +2980,15 @@ export default function App() {
       kills: a.kills, deaths: a.deaths, assists: a.assists, damage: a.damage || 0,
     }));
     const isLeague = !!(game.league && game.league.current);
-    let club = { ...game.club };
+    let club = { ...game.club, record: { domestic: { ...game.club.record.domestic }, international: { ...game.club.record.international }, scrim: { ...game.club.record.scrim } } };
     let newLeague = game.league;
     let seriesDecided = false;
     let seriesWon = null;
     let seriesTally = null;
+    // 스크림/온라인 매칭은 리그 티어가 없으므로, 이번 경기에 나선 선수단의 다수 등급으로 티어를 판단한다
+    const scrimTier = sim.userLineup.filter((p) => p.tier === '2군').length >= 3 ? '2군' : '1군';
+    let matchCategory = null;
+    let matchTier = null;
     if (isLeague) {
       const cur = { ...game.league.current };
       cur.userWins += wasWin ? 1 : 0;
@@ -2987,8 +2998,14 @@ export default function App() {
       if (cur.userWins >= 2 || cur.aiWins >= 2) {
         seriesDecided = true;
         seriesWon = cur.userWins >= 2;
+        matchCategory = game.league.type === 'regional' ? 'domestic' : 'international';
+        matchTier = game.league.tier || '1군';
         club.wins += seriesWon ? 1 : 0;
         club.losses += seriesWon ? 0 : 1;
+        club.record[matchCategory][matchTier] = {
+          wins: club.record[matchCategory][matchTier].wins + (seriesWon ? 1 : 0),
+          losses: club.record[matchCategory][matchTier].losses + (seriesWon ? 0 : 1),
+        };
         if (seriesWon) {
           const winBase = game.league.type === 'regional' ? REGIONAL_REWARD.win : INTERNATIONAL_REWARD.win;
           const winReward = Math.round(winBase * (game.league.tier === '2군' ? 0.5 : 1));
@@ -2999,8 +3016,14 @@ export default function App() {
         newLeague = { ...game.league, current: cur };
       }
     } else {
+      matchCategory = 'scrim';
+      matchTier = scrimTier;
       club.wins += wasWin ? 1 : 0;
       club.losses += wasWin ? 0 : 1;
+      club.record.scrim[scrimTier] = {
+        wins: club.record.scrim[scrimTier].wins + (wasWin ? 1 : 0),
+        losses: club.record.scrim[scrimTier].losses + (wasWin ? 0 : 1),
+      };
     }
     club.value = computeClubValue(newPlayers);
 
@@ -3013,12 +3036,14 @@ export default function App() {
         id: Date.now() + '-' + Math.random(),
         opponentName: selectedOpponent.name, win: wasWin,
         scoreLabel: `${userKillTotal}:${aiKillTotal}`, playTime: Math.round(sim.tick / TICKS_PER_MIN), context: onlineMatchCode ? '온라인 매칭' : '구단 스크림',
+        category: matchCategory, tier: matchTier,
       }, ...prevHistory];
     } else if (seriesDecided) {
       matchHistory = [{
         id: Date.now() + '-' + Math.random(),
         opponentName: selectedOpponent.name, win: seriesWon,
         scoreLabel: `${seriesTally.user}:${seriesTally.ai}`, playTime: null, context: game.league.roundLabel,
+        category: matchCategory, tier: matchTier,
       }, ...prevHistory];
     }
 
@@ -3100,11 +3125,17 @@ export default function App() {
           <h1 className="text-3xl leading-none tracking-wide" style={displayFont}>{game.club.name}</h1>
           <button onClick={() => setScreen('rankings')} className="flex items-center gap-1.5 flex-wrap mt-1 hover:opacity-80 transition-opacity">
             {game.club.region && <span className="text-xs px-1.5 py-0.5 rounded lm-tier-2">{game.club.region}</span>}
-            {game.club.qualifiedRank && (
-              <span className="text-xs px-1.5 py-0.5 rounded lm-tier-2">{LEAGUE_NAME[game.club.region] || '지역리그'} {game.club.qualifiedRank}위</span>
+            {game.club.qualifiedRankByTier && game.club.qualifiedRankByTier['1군'] && (
+              <span className="text-xs px-1.5 py-0.5 rounded lm-tier-2">1군 {LEAGUE_NAME[game.club.region] || '지역리그'} {game.club.qualifiedRankByTier['1군']}위</span>
             )}
-            {game.club.internationalResult && (
-              <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: '#C89B3C', color: '#1A1305' }}>국제 리그 {game.club.internationalResult}</span>
+            {game.club.qualifiedRankByTier && game.club.qualifiedRankByTier['2군'] && (
+              <span className="text-xs px-1.5 py-0.5 rounded lm-tier-reserve">2군 {LEAGUE_NAME[game.club.region] || '지역리그'} {game.club.qualifiedRankByTier['2군']}위</span>
+            )}
+            {game.club.internationalResultByTier && game.club.internationalResultByTier['1군'] && (
+              <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: '#C89B3C', color: '#1A1305' }}>1군 국제 리그 {game.club.internationalResultByTier['1군']}</span>
+            )}
+            {game.club.internationalResultByTier && game.club.internationalResultByTier['2군'] && (
+              <span className="text-xs px-1.5 py-0.5 rounded font-semibold" style={{ background: '#8A7440', color: '#1A1305' }}>2군 국제 리그 {game.club.internationalResultByTier['2군']}</span>
             )}
           </button>
           {subtitle && <p className="text-xs mt-1 lm-muted">{subtitle}</p>}
@@ -3175,6 +3206,30 @@ export default function App() {
           <span className="text-xs lm-dim">(한국시간{timeSynced ? '' : ' · 동기화 중'})</span>
         </div>
         <Header subtitle="구단 홈" />
+        {game.club.record && (
+          <button onClick={() => setScreen('matchHistory')} className={`${panel} lm-panel-hover w-full p-3 mb-4 text-left transition-colors`}>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="lm-muted">
+                  <th className="text-left font-normal pb-1"></th>
+                  <th className="text-center font-normal pb-1">국내리그</th>
+                  <th className="text-center font-normal pb-1">국제리그</th>
+                  <th className="text-center font-normal pb-1">스크림</th>
+                </tr>
+              </thead>
+              <tbody>
+                {['1군', '2군'].map((tier) => (
+                  <tr key={tier}>
+                    <td className="font-semibold pr-2 py-0.5">{tier}</td>
+                    <td className="text-center py-0.5">{game.club.record.domestic[tier].wins}승 {game.club.record.domestic[tier].losses}패</td>
+                    <td className="text-center py-0.5">{game.club.record.international[tier].wins}승 {game.club.record.international[tier].losses}패</td>
+                    <td className="text-center py-0.5">{game.club.record.scrim[tier].wins}승 {game.club.record.scrim[tier].losses}패</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </button>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <button onClick={() => setScreen('roster')} className={`${panel} lm-panel-hover p-6 text-left transition-colors`}>
             <Users size={26} color="#38BDF8" className="mb-2" />
@@ -3336,28 +3391,10 @@ export default function App() {
                     const isLast = posPlayers.length <= 1;
                     return (
                       <div key={p.id} className={`${panel} p-3 flex flex-col`}>
-                        {renameId === p.id ? (
-                          <div className="flex items-center gap-1 mb-2">
-                            <input
-                              type="text"
-                              value={renameInput}
-                              onChange={(e) => setRenameInput(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleRenamePlayer(p.id, renameInput)}
-                              className="lm-input rounded px-1.5 py-1 text-xs flex-1 min-w-0"
-                              autoFocus
-                            />
-                            <button onClick={() => handleRenamePlayer(p.id, renameInput)} className="text-xs px-1.5 py-1 rounded lm-btn-primary font-semibold shrink-0">✓</button>
-                            <button onClick={() => { setRenameId(null); setRenameInput(''); }} className="text-xs px-1.5 py-1 rounded lm-btn-ghost shrink-0">✕</button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between mb-2 gap-1">
-                            <div className="flex items-center gap-1 min-w-0">
-                              <span className="font-bold text-sm truncate">{p.name}</span>
-                              <button onClick={() => { setRenameId(p.id); setRenameInput(p.name); }} className="text-xs lm-dim lm-hover-muted shrink-0">✏️</button>
-                            </div>
-                            <span className="text-xs lm-muted shrink-0">{p.region}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-between mb-2 gap-1">
+                          <span className="font-bold text-sm truncate">{p.name}</span>
+                          <span className="text-xs lm-muted shrink-0">{p.region}</span>
+                        </div>
 
                         <div className="flex flex-col items-center mb-2">
                           <div
@@ -3934,18 +3971,32 @@ export default function App() {
 
   function renderMatchHistory() {
     const history = game.matchHistory || [];
+    const CATEGORY_LABEL = { domestic: '국내리그', international: '국제리그', scrim: '스크림' };
+    const filtered = history.filter((h) => h.category === historyCategory && h.tier === historyTier);
+    const record = game.club.record ? game.club.record[historyCategory][historyTier] : { wins: 0, losses: 0 };
     return (
       <div className="max-w-3xl mx-auto p-4 md:p-8 relative" style={backdropStyle}>
         <Header subtitle="전적" />
         <button onClick={() => setScreen('home')} className={`${btnGhost} px-4 py-2 text-sm mb-4`}>← 홈으로</button>
-        <div className={`${panel} p-4 mb-4 text-center`}>
-          <div className="text-2xl font-bold">{game.club.wins}승 {game.club.losses}패</div>
+        <div className="flex gap-2 mb-2">
+          {['domestic', 'international', 'scrim'].map((cat) => (
+            <button key={cat} onClick={() => setHistoryCategory(cat)} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${historyCategory === cat ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>{CATEGORY_LABEL[cat]}</button>
+          ))}
         </div>
-        {history.length === 0 ? (
+        <div className="flex gap-2 mb-4">
+          {['1군', '2군'].map((t) => (
+            <button key={t} onClick={() => setHistoryTier(t)} className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${historyTier === t ? 'lm-filter-tab-active' : 'lm-filter-tab'}`}>{t}</button>
+          ))}
+        </div>
+        <div className={`${panel} p-4 mb-4 text-center`}>
+          <div className="text-xs mb-1 lm-muted">{CATEGORY_LABEL[historyCategory]} · {historyTier}</div>
+          <div className="text-2xl font-bold">{record.wins}승 {record.losses}패</div>
+        </div>
+        {filtered.length === 0 ? (
           <div className="text-sm text-center py-10 lm-muted">아직 치른 경기가 없어요.</div>
         ) : (
           <div className="space-y-2">
-            {history.map((h) => (
+            {filtered.map((h) => (
               <div key={h.id} className={`${panel} p-3 flex items-center justify-between gap-2`}>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
