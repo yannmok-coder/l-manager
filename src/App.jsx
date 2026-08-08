@@ -106,7 +106,7 @@ const DRAGON_ICON = {
   마법: '/objective-icons/obj-dragon-magic.png',
   장로: '/objective-icons/obj-dragon-elder.png',
 };
-const APP_VERSION = 'v.0.055';
+const APP_VERSION = 'v.0.056';
 const APP_LOGO_DATA_URI = '/logo.png'; // 배포판 전용: 파일 참조
 const SINGLE_PULL_COST = 350;
 const MULTI_PULL_COUNT = 5;
@@ -253,40 +253,18 @@ function isBanPhase(phase) { return phase === 'ban1' || phase === 'ban2'; }
 
 function randRange(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 // 밴/픽 선택 시 짧은 효과음을 직접 합성해서 재생한다 (외부 오디오 파일 없이 Web Audio API 사용)
+// 밴/픽 선택 시 재생되는 효과음 파일(따로 구분되어 관리됨)
+const DRAFT_SFX = {
+  ban: '/sfx/ban.wav',
+  pick: '/sfx/pick.wav',
+};
 function playDraftSfx(kind) {
   try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const now = ctx.currentTime;
-    if (kind === 'ban') {
-      // 밴: 짧고 낮게 깔리는 하강 톤 (탈락/제외 느낌)
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(90, now + 0.22);
-      gain.gain.setValueAtTime(0.16, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.26);
-    } else if (kind === 'pick') {
-      // 픽: 짧고 밝은 상승 2음 차임 (확정/선택 느낌)
-      [0, 0.09].forEach((delay, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(i === 0 ? 560 : 840, now + delay);
-        gain.gain.setValueAtTime(0.001, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.20, now + delay + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.18);
-        osc.connect(gain).connect(ctx.destination);
-        osc.start(now + delay);
-        osc.stop(now + delay + 0.2);
-      });
-    }
-    setTimeout(() => ctx.close(), 600);
+    const src = DRAFT_SFX[kind];
+    if (!src) return;
+    const audio = new Audio(src);
+    audio.volume = 0.6;
+    audio.play().catch(() => {});
   } catch (e) {
     // 브라우저 정책 등으로 재생이 막혀도 게임 진행에는 영향 없도록 무시한다
   }
